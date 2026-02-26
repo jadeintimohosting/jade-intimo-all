@@ -45,7 +45,7 @@ const CheckoutPage = () => {
     city: isAuthenticated ? (address?.city || '') : '',
     state: isAuthenticated ? (address?.state || '') : '',
     zipCode: isAuthenticated ? (address?.postal_code || '') : '',
-    country: isAuthenticated ? (address?.country || "Romania") : 'Romania',
+    country: isAuthenticated ? (address?.country || "România") : 'România', // Preia country sau default "România"
   });
 
   const steps: { key: Step; label: string; icon: React.ElementType }[] = [
@@ -76,7 +76,7 @@ const CheckoutPage = () => {
         city: shippingInfo.city,
         state: shippingInfo.state,
         postal_code: shippingInfo.zipCode,
-        country: shippingInfo.country || "Romania",
+        country: shippingInfo.country || "România", // Include country in payload
         total_ammount: finalTotal,
         payment_method: paymentMethod,
         items: cartItems,
@@ -278,7 +278,7 @@ const CheckoutPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium">Adresă</label>
+                    <label className="mb-2 block text-sm font-medium">Adresă (Strada, Nr, Bl, Ap)</label>
                     <input
                       type="text"
                       required
@@ -287,7 +287,7 @@ const CheckoutPage = () => {
                       className="w-full border border-border bg-transparent px-4 py-3 text-sm focus:border-foreground focus:outline-none"
                     />
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-2 block text-sm font-medium">Oraș</label>
                       <input
@@ -308,6 +308,8 @@ const CheckoutPage = () => {
                         className="w-full border border-border bg-transparent px-4 py-3 text-sm focus:border-foreground focus:outline-none"
                       />
                     </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-2 block text-sm font-medium">Cod Poștal</label>
                       <input
@@ -318,8 +320,19 @@ const CheckoutPage = () => {
                         className="w-full border border-border bg-transparent px-4 py-3 text-sm focus:border-foreground focus:outline-none"
                       />
                     </div>
+                    {/* Am adăugat input-ul pentru Țară */}
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Țară</label>
+                      <input
+                        type="text"
+                        required
+                        value={shippingInfo.country}
+                        onChange={(e) => setShippingInfo({ ...shippingInfo, country: e.target.value })}
+                        className="w-full border border-border bg-transparent px-4 py-3 text-sm focus:border-foreground focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <button type="submit" className="btn-primary w-full sm:w-auto">
+                  <button type="submit" className="btn-primary w-full sm:w-auto mt-4">
                     Continuă spre Plată
                   </button>
                 </motion.form>
@@ -428,6 +441,8 @@ const CheckoutPage = () => {
                       {shippingInfo.address}
                       <br />
                       {shippingInfo.city}, {shippingInfo.state} {shippingInfo.zipCode}
+                      <br />
+                      {shippingInfo.country} {/* Afișare țară */}
                       <br />
                       {shippingInfo.email}
                     </p>

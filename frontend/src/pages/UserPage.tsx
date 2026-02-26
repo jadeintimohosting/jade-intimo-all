@@ -33,7 +33,6 @@ export interface Order {
   total_ammount: number; 
   shipping_cost: number | null;
   created_at: string;
-  // Optional fields that get populated after fetching details
   items?: OrderItem[];
   email?: string;
   first_name?: string;
@@ -42,6 +41,7 @@ export interface Order {
   city?: string;
   state?: string;
   postal_code?: string;
+  country?: string; // Adăugat field pentru țară în interfața Order
 }
 
 const UserPage = () => {
@@ -70,7 +70,7 @@ const UserPage = () => {
     city: "",
     state: "",
     postal_code: "",
-    country: "Romania",
+    country: "România",
   });
 
   const [profileForm, setProfileForm] = useState({
@@ -83,11 +83,11 @@ const UserPage = () => {
   useEffect(() => {
     if (address) {
       setAddressForm({
-        address_line: address.address_line,
-        city: address.city,
-        state: address.state,
-        postal_code: address.postal_code,
-        country: address.country,
+        address_line: address.address_line || "",
+        city: address.city || "",
+        state: address.state || "",
+        postal_code: address.postal_code || "",
+        country: address.country || "România",
       });
     }
   }, [address]);
@@ -113,7 +113,7 @@ const UserPage = () => {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to fetch orders");
+          throw new Error("Eroare la preluarea comenzilor");
         }
 
         const data = await response.json();
@@ -145,10 +145,10 @@ const UserPage = () => {
 
       clearAuth();
       clearCart();
-      toast.success("Logged out successfully");
+      toast.success("Te-ai deconectat cu succes");
       navigate("/login");
     } catch (error: any) {
-      toast.error("Could not log out.");
+      toast.error("Eroare la deconectare.");
     } finally {
       setIsLoggingOut(false);
     }
@@ -168,14 +168,14 @@ const UserPage = () => {
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.message || "Failed to update profile");
+      if (!response.ok) throw new Error(data.message || "Actualizarea profilului a eșuat");
 
       setUser(data.user); 
       setIsEditingProfile(false);
-      toast.success("Profile updated successfully");
+      toast.success("Profilul a fost actualizat cu succes");
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Failed to update profile.");
+      toast.error(err.message || "Actualizarea profilului a eșuat.");
     } finally {
       setIsSavingProfile(false);
     }
@@ -199,13 +199,13 @@ const UserPage = () => {
 
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.message || "Failed to save address");
+      if (!response.ok) throw new Error(data.message || "Salvarea adresei a eșuat");
       
       setAddress(data.address);
       setIsEditingAddress(false);
-      toast.success(isExisting ? "Address updated" : "Address created");
+      toast.success(isExisting ? "Adresa a fost actualizată" : "Adresa a fost adăugată");
     } catch (err: any) {
-      toast.error(err.message || "Failed to save address.");
+      toast.error(err.message || "Salvarea adresei a eșuat.");
     } finally {
       setIsSavingAddress(false);
     }
@@ -230,7 +230,7 @@ const UserPage = () => {
       const data = await res.json();
 
       if (!res.ok)
-        throw new Error(data.message || "Failed to get order details");
+        throw new Error(data.message || "Nu s-au putut încărca detaliile comenzii");
 
       const newOrds = orders.map((item) => {
         if (item.id === orderId) {
@@ -244,6 +244,7 @@ const UserPage = () => {
             city: data.city,
             state: data.state,
             postal_code: data.postal_code,
+            country: data.country, // Preluare țară din detalii comandă
           };
         } else {
           return item;
@@ -254,11 +255,10 @@ const UserPage = () => {
 
     } catch (error: any) {
       console.error("Error fetching order details:", error);
-      toast.error(error.message || "Could not load order details");
+      toast.error(error.message || "Nu s-au putut încărca detaliile comenzii");
     }
   };
 
-  // Helper to collapse an order (clear its details locally)
   const handleHideOrder = (orderId: number) => {
     const newOrds = orders.map((item) => {
       if (item.id === orderId) {
@@ -288,11 +288,11 @@ const UserPage = () => {
                   <div>
                     {!isEditingProfile && (
                       <h1 className="text-xl font-semibold text-foreground">
-                        {user?.first_name ? `${user.first_name} ${user.last_name}` : "My Account"}
+                        {user?.first_name ? `${user.first_name} ${user.last_name}` : "Contul Meu"}
                       </h1>
                     )}
                     <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                      Member
+                      Membru
                     </span>
                   </div>
                 </div>
@@ -301,7 +301,7 @@ const UserPage = () => {
                     onClick={() => setIsEditingProfile(true)} 
                     className="text-xs text-pink-accent hover:underline flex items-center gap-1 font-medium transition-colors"
                   >
-                    <Edit2 size={12} /> Edit
+                    <Edit2 size={12} /> Editează
                   </button>
                 )}
               </div>
@@ -310,9 +310,9 @@ const UserPage = () => {
                 <form onSubmit={handleSaveProfile} className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground ml-1">First Name</label>
+                      <label className="text-xs font-medium text-muted-foreground ml-1">Prenume</label>
                       <input
-                        placeholder="First Name"
+                        placeholder="Prenume"
                         className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
                         value={profileForm.first_name}
                         onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
@@ -320,9 +320,9 @@ const UserPage = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground ml-1">Last Name</label>
+                      <label className="text-xs font-medium text-muted-foreground ml-1">Nume</label>
                       <input
-                        placeholder="Last Name"
+                        placeholder="Nume"
                         className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
                         value={profileForm.last_name}
                         onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
@@ -331,9 +331,9 @@ const UserPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground ml-1">Phone Number</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">Număr de telefon</label>
                     <input
-                      placeholder="Phone Number"
+                      placeholder="Număr de telefon"
                       className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
                       value={profileForm.phone}
                       onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
@@ -341,7 +341,7 @@ const UserPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground ml-1">Email (Cannot be changed)</label>
+                    <label className="text-xs font-medium text-muted-foreground ml-1">Email (Nu poate fi modificat)</label>
                     <input
                       value={user?.email || ""}
                       disabled
@@ -351,14 +351,14 @@ const UserPage = () => {
                   <div className="flex gap-2 pt-2">
                     <Button type="submit" disabled={isSavingProfile} className="flex-1 text-xs py-2 h-auto">
                       {isSavingProfile ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check size={14} className="mr-1" />}
-                      Save
+                      Salvează
                     </Button>
                     <button 
                       type="button" 
                       onClick={() => setIsEditingProfile(false)} 
                       className="px-3 text-xs border border-border rounded hover:bg-secondary transition-colors"
                     >
-                      Cancel
+                      Anulează
                     </button>
                   </div>
                 </form>
@@ -378,8 +378,8 @@ const UserPage = () => {
                       <Phone size={14} />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Phone</p>
-                      <p className="font-medium">{user?.phone || "Not provided"}</p>
+                      <p className="text-xs text-muted-foreground">Telefon</p>
+                      <p className="font-medium">{user?.phone || "Nespecificat"}</p>
                     </div>
                   </div>
                 </div>
@@ -391,7 +391,7 @@ const UserPage = () => {
                 className="flex items-center justify-center gap-2 w-full mt-6 py-2.5 px-4 text-sm text-red-600 hover:bg-red-50 border border-red-100 transition-colors rounded-md font-medium"
               >
                 {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut size={16} />}
-                Logout
+                Deconectare
               </button>
             </div>
 
@@ -400,11 +400,11 @@ const UserPage = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <MapPin size={18} className="text-muted-foreground" />
-                  <h2 className="font-semibold">Shipping Address</h2>
+                  <h2 className="font-semibold">Adresă de Livrare</h2>
                 </div>
                 {!isEditingAddress && address && (
                   <button onClick={() => setIsEditingAddress(true)} className="text-xs text-pink-accent hover:underline flex items-center gap-1 font-medium">
-                    <Edit2 size={12} /> Edit
+                    <Edit2 size={12} /> Editează
                   </button>
                 )}
               </div>
@@ -412,7 +412,7 @@ const UserPage = () => {
               {isEditingAddress || !address ? (
                 <form onSubmit={handleSaveAddress} className="space-y-3">
                   <input
-                    placeholder="Address Line (Strada, Nr, Bl, Ap)"
+                    placeholder="Adresă (Strada, Nr, Bl, Ap)"
                     className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
                     value={addressForm.address_line}
                     onChange={(e) => setAddressForm({ ...addressForm, address_line: e.target.value })}
@@ -420,35 +420,45 @@ const UserPage = () => {
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <input
-                      placeholder="City"
+                      placeholder="Oraș"
                       className="text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
                       value={addressForm.city}
                       onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
                       required
                     />
                     <input
-                      placeholder="State/County"
+                      placeholder="Județ / Sector"
                       className="text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
                       value={addressForm.state}
                       onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
                       required
                     />
                   </div>
-                  <input
-                    placeholder="Postal Code"
-                    className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
-                    value={addressForm.postal_code}
-                    onChange={(e) => setAddressForm({ ...addressForm, postal_code: e.target.value })}
-                    required
-                  />
+                  {/* Adăugat container pentru Cod Poștal și Țară */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      placeholder="Cod Poștal"
+                      className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
+                      value={addressForm.postal_code}
+                      onChange={(e) => setAddressForm({ ...addressForm, postal_code: e.target.value })}
+                      required
+                    />
+                    <input
+                      placeholder="Țară"
+                      className="w-full text-sm border border-border p-2 rounded focus:outline-pink-accent bg-transparent"
+                      value={addressForm.country}
+                      onChange={(e) => setAddressForm({ ...addressForm, country: e.target.value })}
+                      required
+                    />
+                  </div>
                   <div className="flex gap-2 pt-2">
                     <Button type="submit" disabled={isSavingAddress} className="flex-1 text-xs py-2 h-auto">
                       {isSavingAddress ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check size={14} className="mr-1" />}
-                      Save Address
+                      Salvează Adresa
                     </Button>
                     {address && (
                       <button type="button" onClick={() => setIsEditingAddress(false)} className="px-3 text-xs border border-border rounded hover:bg-secondary transition-colors">
-                        Cancel
+                        Anulează
                       </button>
                     )}
                   </div>
@@ -457,8 +467,7 @@ const UserPage = () => {
                 <div className="text-sm text-muted-foreground space-y-1 pl-1 border-l-2 border-pink-accent/50">
                   <p className="text-foreground font-medium">{address.address_line}</p>
                   <p>{address.city}, {address.state}</p>
-                  <p>{address.postal_code}</p>
-                  <p>{address.country}</p>
+                  <p>{address.postal_code}, {address.country}</p> {/* Adăugat afișare țară */}
                 </div>
               )}
             </div>
@@ -469,13 +478,13 @@ const UserPage = () => {
             <div className="bg-background p-6 border border-border rounded-lg shadow-sm min-h-[400px]">
               <div className="flex items-center gap-2 mb-6 border-b border-border pb-4">
                 <Package size={20} className="text-muted-foreground" />
-                <h2 className="text-xl font-semibold">Order History</h2>
+                <h2 className="text-xl font-semibold">Istoric Comenzi</h2>
               </div>
 
               {isLoadingOrders ? (
                 <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                   <Loader2 className="h-8 w-8 animate-spin mb-2" />
-                  <p>Loading your orders...</p>
+                  <p>Se încarcă comenzile...</p>
                 </div>
               ) : orders.length > 0 ? (
                 <div className="space-y-4">
@@ -510,21 +519,21 @@ const UserPage = () => {
                               </span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              Placed on {new Date(order.created_at).toLocaleDateString()}
+                              Plasată pe {new Date(order.created_at).toLocaleDateString()}
                             </p>
 
                             {/* Price Display */}
                             <div className="mt-2 flex flex-col">
                               <p className="text-sm font-bold">
-                                ${finalDollars.toFixed(2)}
+                                {finalDollars.toFixed(2)} Lei
                               </p>
                               {shippingCents > 0 ? (
                                 <span className="text-[10px] text-muted-foreground">
-                                  (Includes ${(shippingCents / 100).toFixed(2)} shipping)
+                                  (Include {(shippingCents / 100).toFixed(2)} Lei livrare)
                                 </span>
                               ) : (
                                 <span className="text-[10px] text-muted-foreground">
-                                  (Free Shipping)
+                                  (Livrare Gratuită)
                                 </span>
                               )}
                             </div>
@@ -541,7 +550,7 @@ const UserPage = () => {
                             }}
                             className="flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-md text-sm font-medium hover:bg-secondary hover:text-foreground transition-all group h-fit self-start md:self-center"
                           >
-                            {showDetails ? "Hide Details" : "View Details"}
+                            {showDetails ? "Ascunde Detalii" : "Vezi Detalii"}
                             <ChevronRight 
                               size={14} 
                               className={`text-muted-foreground transition-transform duration-300 ${showDetails ? "rotate-90" : ""}`} 
@@ -557,7 +566,7 @@ const UserPage = () => {
                               {/* Column 1: Order Items */}
                               <div>
                                 <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                  Items ({order.items.length})
+                                  Produse ({order.items.length})
                                 </h4>
                                 <div className="space-y-3">
                                   {order.items.map((item, idx) => (
@@ -567,7 +576,7 @@ const UserPage = () => {
                                         {item.image ? (
                                           <img src={item.image} alt={item.productName} className="h-full w-full object-cover" />
                                         ) : (
-                                          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-[10px]">No Img</div>
+                                          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-[10px]">Fără Img</div>
                                         )}
                                       </div>
                                       
@@ -575,14 +584,14 @@ const UserPage = () => {
                                       <div className="flex-1">
                                         <p className="text-sm font-medium leading-none">{item.productName}</p>
                                         <div className="mt-1 flex gap-2 text-xs text-muted-foreground">
-                                          <span>Size: {item.size}</span>
-                                          <span>Qty: {item.quantity}</span>
+                                          <span>Mărime: {item.size}</span>
+                                          <span>Cant: {item.quantity}</span>
                                         </div>
                                       </div>
                                       
                                       {/* Price */}
                                       <p className="text-sm font-medium">
-                                        ${((item.price * item.quantity) / 100).toFixed(2)}
+                                        {((item.price * item.quantity) / 100).toFixed(2)} Lei
                                       </p>
                                     </div>
                                   ))}
@@ -596,7 +605,7 @@ const UserPage = () => {
                                 {order.address_line && (
                                   <div>
                                     <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                      Shipping Address
+                                      Adresă de Livrare
                                     </h4>
                                     <div className="text-sm">
                                       <p className="font-medium">{order.first_name} {order.last_name}</p>
@@ -604,6 +613,9 @@ const UserPage = () => {
                                       <p className="text-muted-foreground">
                                         {order.city}, {order.state} {order.postal_code}
                                       </p>
+                                      {order.country && (
+                                        <p className="text-muted-foreground">{order.country}</p> // Afișare țară în sumarul comenzii
+                                      )}
                                       <p className="mt-1 text-xs text-muted-foreground">{order.email}</p>
                                     </div>
                                   </div>
@@ -612,19 +624,19 @@ const UserPage = () => {
                                 {/* Payment Breakdown */}
                                 <div>
                                   <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                      Payment Summary
+                                      Sumar Plată
                                   </h4>
                                   <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Subtotal</span>
-                                    <span>${(totalCents / 100).toFixed(2)}</span>
+                                    <span>{(totalCents / 100).toFixed(2)} Lei</span>
                                   </div>
                                   <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Shipping</span>
-                                    <span>${(shippingCents / 100).toFixed(2)}</span>
+                                    <span className="text-muted-foreground">Livrare</span>
+                                    <span>{(shippingCents / 100).toFixed(2)} Lei</span>
                                   </div>
                                   <div className="mt-2 flex justify-between border-t border-border pt-2 font-bold">
-                                    <span>Total Paid</span>
-                                    <span>${finalDollars.toFixed(2)}</span>
+                                    <span>Total Plătit</span>
+                                    <span>{finalDollars.toFixed(2)} Lei</span>
                                   </div>
                                 </div>
 
@@ -641,10 +653,10 @@ const UserPage = () => {
                   <div className="h-20 w-20 bg-secondary rounded-full flex items-center justify-center mb-4">
                     <Package size={32} className="text-muted-foreground/50" />
                   </div>
-                  <h3 className="text-lg font-medium text-foreground">No orders yet</h3>
-                  <p className="text-muted-foreground max-w-xs mx-auto mt-2">Looks like you haven't placed any orders yet. Start shopping to fill this page.</p>
+                  <h3 className="text-lg font-medium text-foreground">Nicio comandă încă</h3>
+                  <p className="text-muted-foreground max-w-xs mx-auto mt-2">Se pare că nu ai plasat nicio comandă încă. Începe cumpărăturile pentru a umple această pagină.</p>
                   <button onClick={() => navigate('/women')} className="mt-6 btn-primary px-8">
-                    Start Shopping
+                    Începe Cumpărăturile
                   </button>
                 </div>
               )}
