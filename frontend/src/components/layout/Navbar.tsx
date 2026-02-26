@@ -1,24 +1,20 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search,LockKeyhole, ShoppingBag, User, Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, LockKeyhole, ShoppingBag, User, Menu, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGender } from '@/context/GenderContext';
 import { navigationData } from '@/data/navigation';
 import useAuthStore from '@/hooks/use-authstore';
 
-const domain=import.meta.env.VITE_CLOUDFLARE_DOMAIN
+const domain = import.meta.env.VITE_CLOUDFLARE_DOMAIN;
+const logo = `${domain}/logo.webp`;
 
-const logo = `${domain}/logo.webp`
-
-// 1. Importăm noul store Zustand
 import { useCartStore } from '@/hooks/use-cartstore';
 
 const Navbar = () => {
   const { gender, setGender } = useGender();
-
-  const navigate=useNavigate()
+  const navigate = useNavigate();
   
-  // 2. Extragem coșul din Zustand și calculăm totalul de produse
   const cart = useCartStore((state) => state.cart);
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -30,9 +26,9 @@ const Navbar = () => {
   const categories = gender === 'women' ? navigationData.women : navigationData.men;
 
   const isAuthenticated = useAuthStore((state: any) => state.isAuthenticated);
-  const user=useAuthStore((state)=>state.user)
+  const user = useAuthStore((state) => state.user);
 
-  const [search,setSearch]=useState<string|null>(null)
+  const [search, setSearch] = useState<string | null>(null);
 
   const handleCategoryHover = (slug: string | null) => {
     setActiveCategory(slug);
@@ -42,22 +38,18 @@ const Navbar = () => {
     setExpandedMobileCategory(expandedMobileCategory === slug ? null : slug);
   };
 
-
   const handleSearch = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       
       if (search && search.trim() !== '') {
-        // Navigate to the homepage with the search keyword in the URL
         navigate(`/${gender}/cauta/?keyword=${encodeURIComponent(search.trim())}`);
       } else {
-        // If the search bar is empty and they hit enter, just go home
         navigate("/");
       }
       
-      // Optional: Close the search bar after searching
       setIsSearchOpen(false); 
-      setSearch(''); // Clear the input
+      setSearch('');
     }
   };
 
@@ -105,105 +97,116 @@ const Navbar = () => {
 
       {/* Main Navigation */}
       <div className="border-b border-border">
-        <div className="container-custom px-2 sm:px-4"> {/* Ajustăm padding-ul pe ecrane foarte mici */}
+        <div className="container-custom">
           <div className="flex h-16 items-center justify-between">
-            
-            {/* 1. SECȚIUNEA STÂNGA (Meniu) */}
-            <div className="flex flex-1 items-center justify-start">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 lg:hidden"
-                aria-label="Toggle menu"
-              >
-                {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1.5 md:p-2 lg:hidden"
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
 
-              {/* Desktop Navigation (Rămâne vizibilă doar pe LG) */}
-              <nav className="hidden lg:flex lg:items-center lg:gap-6">
-                {categories.map((category) => (
-                  <div
-                    key={category.slug}
-                    className="relative"
-                    onMouseEnter={() => handleCategoryHover(category.slug)}
-                    onMouseLeave={() => handleCategoryHover(null)}
-                  >
-                    <Link
-                      to={`/${gender}/${category.slug}`}
-                      className="nav-link flex items-center gap-1 py-4 text-xs font-medium uppercase tracking-wider"
-                    >
-                      {category.name}
-                      {category.subcategories && category.subcategories.length > 0 && (
-                        <ChevronDown 
-                          size={14} 
-                          className={`transition-transform duration-base ${activeCategory === category.slug ? 'rotate-180' : ''}`} 
-                        />
-                      )}
-                    </Link>
-
-                    {/* ... Restul Dropdown-ului rămâne neschimbat ... */}
-                  </div>
-                ))}
-              </nav>
-            </div>
-
-            {/* 2. SECȚIUNEA CENTRU (Logo) */}
-            <div className="flex flex-shrink-0 items-center justify-center">
+            {/* Logo */}
+            <div className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0">
               <Link to="/" className="flex flex-row gap-2">
-                {/* Am micșorat logo-ul pe mobile (w-20) față de desktop (lg:w-28) */}
-                <img src={logo} alt="logo" className="w-20 sm:w-24 lg:w-28 transition-all duration-300" />
+                {/* Logo mai mic pe mobil (w-20) și normal pe desktop (md:w-28) */}
+                <img src={logo} alt="logo" className='w-20 md:w-28'/>
               </Link>
             </div>
 
-            {/* 3. SECȚIUNEA DREAPTA (Iconițe) */}
-            <div className="flex flex-1 items-center justify-end">
-              <div className="flex items-center gap-0.5 sm:gap-2"> {/* Gap minim pe mobile */}
-                <button
-                  onClick={() => setIsSearchOpen(!isSearchOpen)}
-                  className="p-2 transition-opacity duration-base hover:opacity-70"
-                  aria-label="Search"
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex lg:items-center lg:gap-6">
+              {categories.map((category) => (
+                <div
+                  key={category.slug}
+                  className="relative"
+                  onMouseEnter={() => handleCategoryHover(category.slug)}
+                  onMouseLeave={() => handleCategoryHover(null)}
                 >
-                  <Search size={20} />
-                </button>
-
-                {/* Ascundem opțional User pe mobile dacă e prea aglomerat, 
-                    sau îl lăsăm cu padding mai mic */}
-                <Link
-                  to="/login"
-                  className="p-2 transition-opacity duration-base hover:opacity-70"
-                  aria-label="Account"
-                >
-                  <User size={20} />
-                </Link>
-
-                {isAuthenticated && user.role === "admin" && (
                   <Link
-                    to="/admin"
-                    className="p-2 transition-opacity duration-base hover:opacity-70"
-                    aria-label="Admin"
+                    to={`/${gender}/${category.slug}`}
+                    className="nav-link flex items-center gap-1 py-4 text-xs font-medium uppercase tracking-wider"
                   >
-                    <LockKeyhole size={20} />
+                    {category.name}
+                    {category.subcategories && category.subcategories.length > 0 && (
+                      <ChevronDown 
+                        size={14} 
+                        className={`transition-transform duration-base ${activeCategory === category.slug ? 'rotate-180' : ''}`} 
+                      />
+                    )}
                   </Link>
-                )}
 
+                  {/* Subcategory Dropdown */}
+                  <AnimatePresence>
+                    {activeCategory === category.slug && category.subcategories && category.subcategories.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        transition={{ duration: 0.2 }}
+                        className="absolute left-0 top-full min-w-[220px] bg-background py-3 shadow-medium z-50"
+                      >
+                        {category.subcategories.map((sub) => (
+                          <Link
+                            key={sub.slug}
+                            to={`/${gender}/${category.slug}/${sub.slug}`}
+                            className="block px-5 py-2 text-sm transition-colors duration-base hover:bg-secondary"
+                          >
+                            {sub.name}
+                          </Link>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </nav>
+
+            {/* Right Icons */}
+            {/* Am micșorat gap-ul pe mobil la gap-0.5 */}
+            <div className="flex items-center gap-0.5 md:gap-4">
+              <button
+                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                className="p-1.5 md:p-2 transition-opacity duration-base hover:opacity-70"
+                aria-label="Search"
+              >
+                <Search className="h-[18px] w-[18px] md:h-5 md:w-5" />
+              </button>
+              <Link
+                to="/login"
+                className="p-1.5 md:p-2 transition-opacity duration-base hover:opacity-70 md:block"
+                aria-label="Account"
+              >
+                <User className="h-[18px] w-[18px] md:h-5 md:w-5" />
+              </Link>
+              {(isAuthenticated && user.role==="admin") && (
                 <Link
-                  to="/cart"
-                  className="relative p-2 transition-opacity duration-base hover:opacity-70"
-                  aria-label="Cart"
+                  to="/admin"
+                  className="p-1.5 md:p-2 transition-opacity duration-base hover:opacity-70 md:block"
+                  aria-label="Admin"
                 >
-                  <ShoppingBag size={20} />
-                  {totalItems > 0 && (
-                    <motion.span
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute right-0 top-0 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-pink text-[10px] sm:text-xs font-medium text-foreground"
-                    >
-                      {totalItems}
-                    </motion.span>
-                  )}
+                  <LockKeyhole className="h-[18px] w-[18px] md:h-5 md:w-5" />
                 </Link>
-              </div>
+              )}
+              <Link
+                to="/cart"
+                className="relative p-1.5 md:p-2 transition-opacity duration-base hover:opacity-70"
+                aria-label="Cart"
+              >
+                <ShoppingBag className="h-[18px] w-[18px] md:h-5 md:w-5" />
+                {totalItems > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute right-0 top-0 md:-right-1 md:-top-1 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-pink text-[10px] md:text-xs font-medium text-foreground"
+                  >
+                    {totalItems}
+                  </motion.span>
+                )}
+              </Link>
             </div>
-
           </div>
         </div>
       </div>
@@ -219,7 +222,7 @@ const Navbar = () => {
           >
             <div className="container-custom py-4">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4 md:h-[18px] md:w-[18px]" />
                 <input
                   type="text"
                   placeholder="Căutați produse..."
@@ -245,6 +248,7 @@ const Navbar = () => {
             transition={{ type: 'tween', duration: 0.3 }}
             className="fixed inset-0 top-[105px] z-50 bg-background lg:hidden overflow-y-auto"
           >
+            {/* ... restul meniului de mobil rămâne la fel ... */}
             <nav className="container-custom py-8">
               <div className="space-y-2">
                 {categories.map((category, index) => (
