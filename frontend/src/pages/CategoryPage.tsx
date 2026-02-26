@@ -54,7 +54,7 @@ const CategoryPage = () => {
       params.append('limit', itemsPerPage.toString());
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?${params.toString()}`, {
+        const response = await fetch(`/api/products?${params.toString()}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });

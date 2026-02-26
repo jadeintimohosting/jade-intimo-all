@@ -16,7 +16,7 @@ import {
   RefreshCw // Adăugat pentru iconița de Update Status
 } from 'lucide-react';
 
-const API_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = `/api`;
 
 const OrderDetailsAdmin = () => {
   const { id } = useParams();

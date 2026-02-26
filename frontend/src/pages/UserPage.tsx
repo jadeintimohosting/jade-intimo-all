@@ -106,7 +106,7 @@ const UserPage = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/order/get`, {
+        const response = await fetch(`/api/order/get`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           credentials: "include", 
@@ -137,7 +137,7 @@ const UserPage = () => {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+      const response = await fetch(`/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -159,7 +159,7 @@ const UserPage = () => {
     setIsSavingProfile(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/updateData`, {
+      const response = await fetch(`/api/auth/updateData`, {
         method: "PATCH", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileForm),
@@ -190,7 +190,7 @@ const UserPage = () => {
     const method = isExisting ? "PUT" : "POST";
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/${endpoint}`, {
+      const response = await fetch(`/api/auth/${endpoint}`, {
         method: method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(addressForm),
@@ -219,7 +219,7 @@ const UserPage = () => {
 
   const handleViewOrder = async (orderId: number) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/order/details/${orderId}`, {
+      const res = await fetch(`/api/order/details/${orderId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

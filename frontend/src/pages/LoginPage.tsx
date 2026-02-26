@@ -36,7 +36,7 @@ const LoginPage = () => {
       : { email, password, phone, first_name:firstName, last_name:lastName };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
+      const response = await fetch(`${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

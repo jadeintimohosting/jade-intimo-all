@@ -86,7 +86,7 @@ const DashboardAdmin = () => {
     const fetchOrderEvolution = async () => {
       setIsLoadingChart(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/order-evolution/${timeRange}`, {
+        const response = await fetch(`/api/admin/order-evolution/${timeRange}`, {
           method: 'GET',
           credentials: 'include',
         });
@@ -116,7 +116,7 @@ const DashboardAdmin = () => {
     const fetchLowStock = async () => {
       setIsLoadingStock(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/low-stock`, {
+        const response = await fetch(`/api/admin/low-stock`, {
           method: 'GET',
           credentials: 'include',
         });
@@ -144,7 +144,7 @@ const DashboardAdmin = () => {
     const fetchPendingOrders = async () => {
       setIsLoadingPending(true);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/pending-orders`, {
+        const response = await fetch(`/api/admin/pending-orders`, {
           method: 'GET',
           credentials: 'include',
         });

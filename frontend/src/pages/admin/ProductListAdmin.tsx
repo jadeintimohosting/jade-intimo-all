@@ -15,7 +15,7 @@ import {
 import { navigationData } from '@/data/navigation'; // Adjust path as needed
 
 // --- CONFIGURATION ---
-const API_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = `/api`;
 
 const ProductListAdmin = () => {
   const navigate = useNavigate();

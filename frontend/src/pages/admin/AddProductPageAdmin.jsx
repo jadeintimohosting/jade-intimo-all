@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { navigationData } from '@/data/navigation'; // Adjust path if needed
 
 // --- CONFIGURATION ---
-const API_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = `/api`;
 
 export default function CreateProduct() {
   const navigate = useNavigate();

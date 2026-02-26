@@ -43,7 +43,7 @@ const SearchPage = () => {
           sortBy: sortBy
         });
 
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products?${query.toString()}`);
+        const response = await fetch(`/api/products?${query.toString()}`);
         
         if (!response.ok) throw new Error("Eroare la preluarea datelor");
 

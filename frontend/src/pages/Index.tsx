@@ -21,7 +21,7 @@ const Index = () => {
       try {
         // 1. Fetch New Products only if not yet fetched
         if (newArrivals == null) {
-          const newRes = await fetch(`${import.meta.env.VITE_API_URL}/api/products/new`);
+          const newRes = await fetch(`/api/products/new`);
           const newData = await newRes.json();
           // store the payload's products (handle either shape)
           setNewArrivals(newData.products ?? newData);
@@ -29,7 +29,7 @@ const Index = () => {
 
         // 2. Fetch Bestsellers only if not yet fetched
         if (bestSellers == null) {
-          const bestRes = await fetch(`${import.meta.env.VITE_API_URL}/api/products?limit=4&sortBy=best-selling`);
+          const bestRes = await fetch(`/api/products?limit=4&sortBy=best-selling`);
           const bestData = await bestRes.json();
           setBestSellers(bestData.products ?? bestData);
         }

@@ -40,7 +40,7 @@ const CartPage = () => {
     try {
       if (isAuthenticated) {
         // Dacă e logat, actualizăm pe server cu cantitatea FINALA
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${variantId}`, {
+        const response = await fetch(`/api/cart/${variantId}`, {
           method: 'PATCH', 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nr: finalQuantity }), // Trimitem cantitatea absolută
@@ -64,7 +64,7 @@ const CartPage = () => {
     setIsUpdating(variantId);
     try {
       if (isAuthenticated) {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart/${variantId}`, {
+        const response = await fetch(`/api/cart/${variantId}`, {
           method: 'DELETE',
           credentials: 'include',
         });

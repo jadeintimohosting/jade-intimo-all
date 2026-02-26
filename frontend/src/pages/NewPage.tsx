@@ -26,7 +26,7 @@ const CategoryPage = () => {
       if (newArrivals == null) {
         setIsLoading(true);
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/new`);
+          const response = await fetch(`/api/products/new`);
           const data = await response.json();
           // backend returns { men: Array, women: Array }
           setNewArrivals(data.men || data.women ? data : (data.products ?? data));

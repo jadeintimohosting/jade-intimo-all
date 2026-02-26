@@ -84,7 +84,7 @@ const CheckoutPage = () => {
 
       if (paymentMethod === 'credit_card') {
         
-        const stockRes = await fetch(`${import.meta.env.VITE_API_URL}/api/order/check_stock`, {
+        const stockRes = await fetch(`/api/order/check_stock`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ items: cartItems }),
@@ -95,7 +95,7 @@ const CheckoutPage = () => {
           throw new Error(errorData.error || "Unele produse nu mai sunt în stoc");
         }
 
-        const paymentRes = await fetch(`${import.meta.env.VITE_API_URL}/api/order/payment`, {
+        const paymentRes = await fetch(`/api/order/payment`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ items: cartItems }),
@@ -110,7 +110,7 @@ const CheckoutPage = () => {
 
       } 
       else {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/order/place`, {
+        const res = await fetch(`/api/order/place`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

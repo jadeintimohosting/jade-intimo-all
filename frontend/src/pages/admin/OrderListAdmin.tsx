@@ -12,7 +12,7 @@ import {
   XCircle    // Adăugat pentru iconița de status
 } from 'lucide-react';
 
-const API_URL = `${import.meta.env.VITE_API_URL}/api`;
+const API_URL = `/api`;
 
 const OrderListAdmin = () => {
   const [orders, setOrders] = useState([]);

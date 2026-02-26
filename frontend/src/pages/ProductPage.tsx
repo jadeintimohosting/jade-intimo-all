@@ -51,7 +51,7 @@ const ProductPage = () => {
       setLoading(true);
       setError(false);
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`);
+        const response = await fetch(`/api/products/${id}`);
         
         if (!response.ok) {
           if (response.status === 404) {
@@ -108,7 +108,7 @@ const ProductPage = () => {
 
     if (isAuthenticated) {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/cart`, {
+        const response = await fetch(`/api/cart`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
