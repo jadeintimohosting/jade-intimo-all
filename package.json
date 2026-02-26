@@ -1,0 +1,24 @@
+{
+  "name": "jade-intimo-all",
+  "version": "1.0.0",
+  "description": "Monorepo pentru Jade Intimo",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && npm start",
+    "install-all": "npm install && npm install --prefix frontend && npm install --prefix backend"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alex110506/jade-intimo-all.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Alex110506/jade-intimo-all/issues"
+  },
+  "homepage": "https://github.com/Alex110506/jade-intimo-all#readme"
+}
