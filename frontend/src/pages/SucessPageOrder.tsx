@@ -17,7 +17,7 @@ const SuccessPage = () => {
     const finalizeOrder = async () => {
       if (!sessionId) return;
 
-      // 1. Retrieve the saved data
+      // 1. Preluăm datele salvate
       const storedOrder = localStorage.getItem('pending_order_data');
       if (!storedOrder) {
         setStatus('error');
@@ -26,30 +26,52 @@ const SuccessPage = () => {
       }
 
       const orderData = JSON.parse(storedOrder);
+      
+      // Setăm numărul maxim de încercări
+      const maxRetries = 3;
+      let attempt = 0;
 
-      try {
-        // 2. Call API to verify payment AND place order
-        const res = await fetch(`/api/order/place`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include", 
-          body: JSON.stringify({
-            ...orderData,
-            stripe_session_id: sessionId
-          }),
-        });
+      // 2. Mecanism de Retry pentru a aștepta procesarea Stripe
+      while (attempt < maxRetries) {
+        try {
+          // Dacă nu este prima încercare, așteptăm 2 secunde (2000 ms) înainte de a face cererea
+          if (attempt > 0) {
+            console.log(`Reîncercăm validarea plății... (Încercarea ${attempt + 1})`);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+          }
 
-        if (!res.ok) throw new Error("Order creation failed");
+          const res = await fetch(`/api/order/place`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include", 
+            body: JSON.stringify({
+              ...orderData,
+              stripe_session_id: sessionId
+            }),
+          });
 
-        // 3. Cleanup
-        localStorage.removeItem('pending_order_data');
-        clearCart();
-        setStatus('success');
-        
-      } catch (error) {
-        console.error(error);
-        setStatus('error');
+          if (res.ok) {
+            // 3. Succes! Curățăm datele și ieșim din buclă (return)
+            localStorage.removeItem('pending_order_data');
+            clearCart();
+            setStatus('success');
+            return; 
+          }
+
+          // Dacă cererea nu are succes (ex: 402 Payment Required din controllerul tău), continuăm bucla
+          const errorData = await res.json();
+          console.warn(`Încercarea ${attempt + 1} a eșuat:`, errorData.message);
+
+        } catch (error) {
+          console.error(`Eroare de rețea la încercarea ${attempt + 1}:`, error);
+        }
+
+        attempt++;
       }
+
+      // 4. Dacă am epuizat toate cele 3 încercări (a trecut prea mult timp)
+      setStatus('error');
+      toast.error("Nu am putut confirma plata cu procesatorul. Te rugăm să ne contactezi.");
     };
 
     finalizeOrder();
@@ -57,7 +79,12 @@ const SuccessPage = () => {
 
   if (status === 'verifying') return (
     <div className="flex min-h-screen items-center justify-center">
-      <p className="text-lg font-medium">Se verifică plata...</p>
+      <div className="text-center">
+        {/* Adăugat un mic indicator vizual pentru așteptare */}
+        <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-lg font-medium text-foreground">Se verifică plata cu Stripe...</p>
+        <p className="text-sm text-muted-foreground mt-2">Te rugăm să nu închizi această pagină.</p>
+      </div>
     </div>
   );
   
@@ -65,9 +92,14 @@ const SuccessPage = () => {
     <>
     <Navbar/>
       <div className="flex min-h-screen items-center justify-center text-red-600">
-        <p>Ceva nu a mers bine. Te rugăm să mai verifici odată datele introduse! </p>
-        
-        <p>Te rugăm să contactezi suportul.</p>
+        <div className="text-center">
+          <p className="text-xl font-bold mb-2">Ceva nu a mers bine.</p>
+          <p>Nu am putut confirma statusul plății tale.</p>
+          <p>Te rugăm să contactezi suportul la adresa de email afișată pe site.</p>
+          <button onClick={() => navigate('/')} className="mt-6 px-6 py-2 border border-red-600 rounded hover:bg-red-50 transition-colors">
+            Întoarce-te pe site
+          </button>
+        </div>
       </div>
       <Footer/>
     </>
