@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "stripe_payment_id" varchar(255);

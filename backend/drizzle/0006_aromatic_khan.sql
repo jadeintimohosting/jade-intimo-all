@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "shipping_cost" integer DEFAULT 0;
