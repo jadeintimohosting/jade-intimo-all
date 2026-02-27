@@ -38,6 +38,7 @@ import TermeniConditii from "./pages/footerPages/TermeniConditii.tsx";
 
 import RouteTracker from "./hooks/RouteTracker.tsx";
 import PrivacyPolicy from "./pages/footerPages/PrivacyPolicy.tsx";
+import CookieConsent from "./hooks/CookieConsent.tsx";
 
 const queryClient = new QueryClient();
 
@@ -142,6 +143,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <RouteTracker/>
+              <CookieConsent/>
 
               <Routes>
                 <Route path="/" element={<Index />} />

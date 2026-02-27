@@ -11,6 +11,7 @@ import { insertProduct, insertVariant, retrieveAllProducts, retrieveNewArrivals,
 import { createProductSchema, createVariantScheema, updateProductScheema, updateVariantScheema } from "#validations/product.validation.js";
 import { formatValidationError } from "#utils/format.js";
 import { eq } from "drizzle-orm";
+import { product_variants } from "#models/product-variant.model.js";
 
 export const getProducts = async (req, res) => {
     try {
@@ -228,8 +229,11 @@ export const deleteProductAdmin = async (req, res) => {
     try {
         const { id } = req.params;
 
+        // --- MODIFICARE AICI ---
+        // Facem update în loc de delete fizic
         const [deleted] = await db
-            .delete(products)
+            .update(products)
+            .set({ is_deleted: true })
             .where(eq(products.id, Number(id)))
             .returning();
 
@@ -240,10 +244,11 @@ export const deleteProductAdmin = async (req, res) => {
             });
         }
 
-        logger.info(`Product deleted by admin: ${deleted.name} (ID: ${deleted.id})`);
+        // Am actualizat și mesajul de log pentru claritate în debug
+        logger.info(`Product soft-deleted by admin: ${deleted.name} (ID: ${deleted.id})`);
 
         return res.status(200).json({
-            message: "Produsul a fost șters cu succes",
+            message: "Produsul a fost șters cu succes (Soft Delete)",
             deletedProduct: deleted
         });
 
@@ -255,7 +260,6 @@ export const deleteProductAdmin = async (req, res) => {
         });
     }
 };
-
 
 export const createVariantAdmin=async (req,res)=>{
     try {
@@ -330,6 +334,41 @@ export const updateVariantAdmin=async (req,res)=>{
         logger.error("error updating product variant")
         return res.status(500).json({ 
             error: "Internal server error",
+            message: error.message 
+        });
+    }
+}
+
+export const deleteVariantAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const variantId = parseInt(id, 10);
+
+        if (isNaN(variantId)) {
+            return res.status(400).json({ message: "ID-ul trebuie să fie un număr valid" });
+        }
+
+        const result = await db
+            .update(product_variants)
+            .set({
+                is_deleted: true
+            })
+            .where(eq(product_variants.id, variantId))
+            .returning();
+
+        if (result.length === 0) {
+            return res.status(404).json({ message: "Varianta nu a fost găsită" });
+        }
+
+        return res.status(200).json({
+            message: "Varianta a fost ștearsă cu succes",
+            deletedVariant: result[0]
+        });
+
+    } catch (error) {
+        logger.error(`Eroare la ștergerea variantei de produs: ${error.message}`); 
+        return res.status(500).json({ 
+            error: "Eroare internă a serverului",
             message: error.message 
         });
     }

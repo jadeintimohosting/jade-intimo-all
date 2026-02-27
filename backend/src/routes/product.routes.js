@@ -9,6 +9,7 @@ import {
     createVariantAdmin,
     updateVariantAdmin,
     generateUploadUrl,
+    deleteVariantAdmin,
 } from "#controllers/products.controller.js";
 import { adminRoute } from "#middleware/admin.middleware.js";
 import { authenticateToken } from "#middleware/auth.middleware.js";
@@ -32,7 +33,7 @@ router.route("/admin/item/:id")
 router.route("/admin/variant/:id")
     .post(apiLimiter(15 * 60 * 1000, 50), authenticateToken,adminRoute,createVariantAdmin)
     .put(apiLimiter(15 * 60 * 1000, 50), authenticateToken,adminRoute,updateVariantAdmin)
-    .post(apiLimiter(15 * 60 * 1000, 50), authenticateToken,adminRoute,createVariantAdmin)
+    .delete(apiLimiter(15 * 60 * 1000, 50), authenticateToken,adminRoute,deleteVariantAdmin)
 
 //user endpoints
 

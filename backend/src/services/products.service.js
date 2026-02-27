@@ -19,12 +19,16 @@ export const retrieveAllProducts = async (
 
         const filters = [];
         
+        // --- MODIFICARE AICI ---
+        // Filtrăm implicit doar produsele active (neșterse)
+        filters.push(eq(products.is_deleted, false));
+        
         // Existing exact-match filters
         if (gender) filters.push(eq(products.gender, gender));
         if (category) filters.push(eq(products.category, category));
         if (subCategory) filters.push(eq(products.subCategory, subCategory));
         
-        // --- NEW KEYWORD SEARCH FILTER ---
+        // NEW KEYWORD SEARCH FILTER
         if (keyword) {
             filters.push(ilike(products.name, `%${keyword}%`));
         }
@@ -54,6 +58,7 @@ export const retrieveAllProducts = async (
             .limit(limit)
             .offset(offset);
 
+        // Corectare numărătoare: folosim count() specific Drizzle
         let countQuery = db.select({ value: countFn() }).from(products);
         if (whereClause) countQuery = countQuery.where(whereClause);
 
@@ -84,14 +89,26 @@ export const retrieveNewArrivals = async (limit=20) => {
     const womenNewest = await db
       .select()
       .from(products)
-      .where(eq(products.gender, "women"))
+      .where(
+        // --- MODIFICARE AICI ---
+        and(
+            eq(products.gender, "women"),
+            eq(products.is_deleted, false)
+        )
+      )
       .orderBy(desc(products.created_at))
       .limit(limit);
 
     const menNewest = await db
       .select()
       .from(products)
-      .where(eq(products.gender, "men"))
+      .where(
+        // --- MODIFICARE AICI ---
+        and(
+            eq(products.gender, "men"),
+            eq(products.is_deleted, false)
+        )
+      )
       .orderBy(desc(products.created_at))
       .limit(limit);
 
@@ -117,7 +134,10 @@ export const retrieveProductById = async (productId) => {
         const variants = await db
             .select()
             .from(product_variants)
-            .where(eq(product_variants.product_id, productId));
+            .where(and(
+                eq(product_variants.product_id, productId),
+                eq(product_variants.is_deleted,false)
+            ));
 
         if (!product) {
             return null;

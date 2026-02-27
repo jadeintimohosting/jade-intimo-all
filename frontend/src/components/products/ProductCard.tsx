@@ -45,11 +45,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
         </h3>
         <div className="mt-2 flex items-center gap-2">
           <span className="text-sm font-semibold">
-            ${(Number(product.price)/100).toFixed(2)}
+            RON {(Number(product.price)/100).toFixed(2)}
           </span>
           {product.originalPrice && (
             <span className="text-sm text-muted-foreground line-through">
-              ${(Number(product.originalPrice)/100).toFixed(2)}
+              RON {(Number(product.originalPrice)/100).toFixed(2)}
             </span>
           )}
         </div>

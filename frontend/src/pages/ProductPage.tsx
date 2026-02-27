@@ -15,11 +15,13 @@ import { useCartStore, CartItem } from '@/hooks/use-cartstore';
 // Import your base interface
 import { Product } from '@/data/products';
 
+// MODIFICARE 1: Am adăugat is_deleted în interfața variantelor
 interface Variants {
   id: string;
   product_id: string;
   size: string;
   quantity: number;
+  is_deleted?: boolean; 
 }
 
 const ProductPage = () => {
@@ -65,8 +67,11 @@ const ProductPage = () => {
         const productData = data.product?.product || data.product; 
         const variantsData = data.product?.variants || [];
 
+        // MODIFICARE 2: Filtrăm variantele pentru a le păstra doar pe cele active (is_deleted: false)
+        const activeVariants = variantsData.filter((v: Variants) => !v.is_deleted);
+
         setProduct(productData);
-        setVariants(variantsData);
+        setVariants(activeVariants); // Salvăm în state doar variantele active
         
         setSelectedSize('');
         setQuantity(1);
@@ -160,12 +165,25 @@ const ProductPage = () => {
     );
   }
 
-  if (!product || error) {
+  // MODIFICARE 3: Verificăm dacă produsul principal are is_deleted setat pe true
+  // Folosesc (product as any).is_deleted în caz că nu ai adăugat încă is_deleted în interfața Product din '@/data/products'
+  const isProductDeleted = product && (product as any).is_deleted;
+
+  if (!product || error || isProductDeleted) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <main className="container mx-auto px-4 py-20 text-center">
-          <h1 className="font-display text-3xl">Produsul nu a fost găsit</h1>
+        <main className="container mx-auto flex-1 flex flex-col items-center justify-center px-4 py-20 text-center">
+          <h1 className="font-display text-3xl font-semibold">
+            {isProductDeleted 
+              ? "Produsul nu mai este disponibil în catalog" 
+              : "Produsul nu a fost găsit"}
+          </h1>
+          <p className="mt-4 text-muted-foreground max-w-md">
+            {isProductDeleted 
+              ? "Ne pare rău, dar acest produs a fost retras din magazinul nostru și nu mai poate fi comandat." 
+              : "Te rugăm să verifici URL-ul sau să explorezi restul catalogului nostru."}
+          </p>
           <Button onClick={() => navigate('/')} className="mt-8">Înapoi la Acasă</Button>
         </main>
         <Footer />
@@ -196,10 +214,9 @@ const ProductPage = () => {
           </ol>
         </nav>
 
-        {/* --- CHANGED GRID LAYOUT HERE --- */}
         <div className="grid gap-8 lg:gap-12 lg:grid-cols-12">
           
-          {/* --- IMAGE GALLERY (Now takes 5 columns instead of 6, and has a max width) --- */}
+          {/* IMAGE GALLERY */}
           <div className="space-y-4 select-none lg:col-span-5 lg:max-w-md w-full">
             <div className="relative aspect-[3/4] overflow-hidden bg-secondary rounded-xl group flex items-center justify-center">
               {images.length > 0 ? (
@@ -256,15 +273,16 @@ const ProductPage = () => {
             )}
           </div>
 
-          {/* --- PRODUCT DETAILS (Now takes 7 columns instead of 6) --- */}
+          {/* PRODUCT DETAILS */}
           <div className="space-y-8 lg:col-span-6">
             <div>
               <h1 className="font-heading text-3xl lg:text-4xl font-semibold">{product.name}</h1>
               <div className="mt-6 flex items-center gap-4">
                 <span className="text-3xl font-semibold">{(Number(product.price) / 100).toFixed(2)} RON</span>
-                {product.originalPrice && (
+                {/* Asigură-te că ai adăugat originalPrice în schema ta de bază de date dacă îl folosești */}
+                {(product as any).originalPrice && (
                   <span className="text-xl text-muted-foreground line-through">
-                    {Number(product.originalPrice / 100).toFixed(2)} RON
+                    {Number((product as any).originalPrice / 100).toFixed(2)} RON
                   </span>
                 )}
               </div>
@@ -274,6 +292,7 @@ const ProductPage = () => {
               {product.description || "Nu există descriere disponibilă."}
             </p>
 
+            {/* VARIATIONS LIST (Acum conține doar variantele active) */}
             {variants && variants.length > 0 && (
               <div className="space-y-4 max-w-md">
                 <div className="flex items-center justify-between">

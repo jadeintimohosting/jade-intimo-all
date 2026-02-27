@@ -3,7 +3,8 @@ import {
   serial, 
   varchar,
   timestamp,
-  integer
+  integer,
+  boolean
 } from "drizzle-orm/pg-core";
 import { products } from "./product.model.js";
 
@@ -16,5 +17,7 @@ export const product_variants = pgTable("product_variants", {
 
   size: varchar("size", { length: 32 }).notNull(),
   quantity: integer("quantity").notNull(),
-  created_at: timestamp("created_at").defaultNow().notNull()
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  
+  is_deleted: boolean("is_deleted").default(false).notNull() 
 });
