@@ -2,7 +2,7 @@ import { orders } from "#models/order.model.js";
 import { products } from "#models/product.model.js";
 import { product_variants } from "#models/product-variant.model.js";
 import { db } from "#config/database.js";
-import { sql, gte,eq,lte, desc } from "drizzle-orm";
+import { sql, gte,eq,lte, desc, and } from "drizzle-orm";
 
 export const getRecentOrders = async (days) => {
         
@@ -45,7 +45,11 @@ export const getLowStockProducts = async () => {
             })
             .from(product_variants)
             .innerJoin(products, eq(product_variants.product_id, products.id))
-            .where(lte(product_variants.quantity, 5))
+            .where(and(
+                lte(product_variants.quantity, 5),
+                eq(product_variants.is_deleted,false),
+                eq(products.is_deleted, false)
+            ))
             .orderBy(product_variants.quantity);
 
         return {
