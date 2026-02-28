@@ -29,7 +29,8 @@ export const subcategoryArray=[
   "costume-2-piese", "sutien-de-baie", "slip-de-baie", "tankini", 
   "tinute-de-plaja", "scuba", "costume-push-up", "costume-chilot-brazilian",
   "clasici", "boxeri", "pijamale-pentru-barbati", "tricouri", "short-uri", "slipuri",
-  "body-si-corset", "chiloti-curvy"
+  "body-si-corset", "chiloti-curvy", 
+  "maneca-scurta-pantalon-scurt", "maneca-scurta-pantalon-lung", "maneca-lunga-pantalon-scurt"
 ]
 
 export const genderEnum = pgEnum("gender", genderArray);

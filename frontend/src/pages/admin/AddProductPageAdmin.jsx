@@ -48,7 +48,31 @@ export default function CreateProduct() {
   // --- HANDLERS ---
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
+
+    // Logica pentru formatarea prețului
+    if (name === 'price') {
+      // 1. Înlocuim virgula cu punct
+      value = value.replace(/,/g, '.');
+      
+      // 2. Eliminăm orice literă sau caracter special (păstrăm doar cifre și punct)
+      value = value.replace(/[^0-9.]/g, '');
+      
+      // 3. Prevenim introducerea mai multor puncte (ex: 12.5.3 -> 12.53)
+      const parts = value.split('.');
+      if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
+      }
+
+      // 4. Limităm la maxim 2 zecimale după punct
+      if (value.includes('.')) {
+        const [intPart, decPart] = value.split('.');
+        if (decPart && decPart.length > 2) {
+          value = `${intPart}.${decPart.substring(0, 2)}`;
+        }
+      }
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -236,7 +260,7 @@ export default function CreateProduct() {
             <input 
               type="file" 
               id="image-upload" 
-              accept="image/*" 
+              accept="image/jpeg, image/png, image/webp" 
               multiple 
               className="hidden" 
               onChange={handleFileChange} 
@@ -246,7 +270,7 @@ export default function CreateProduct() {
                 <Upload className="h-8 w-8 text-blue-500" />
               </div>
               <span className="text-base font-medium text-gray-700">Apasă pentru a încărca imagini</span>
-              <span className="text-sm text-gray-400 mt-1">Poți selecta mai multe imagini simultan</span>
+              <span className="text-sm text-gray-400 mt-1">Sunt permise formatele JPG, PNG și WebP</span>
             </label>
           </div>
         </div>
@@ -273,8 +297,8 @@ export default function CreateProduct() {
             <input
               required
               name="price"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={formData.price}
               onChange={handleChange}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all"

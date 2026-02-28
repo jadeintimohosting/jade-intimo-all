@@ -82,6 +82,9 @@ export const navigationData: NavigationData = {
       subcategories: [
         { name: 'Toate', slug: '' },
         { name: 'Maneca lunga pantalon lung', slug: 'maneca-lunga-pantalon-lung' },
+        { name: 'Maneca scurta pantalon scurt', slug: 'maneca-scurta-pantalon-scurt' },
+        { name: 'Maneca scurta pantalon lung', slug: 'maneca-scurta-pantalon-lung' },
+        { name: 'Maneca lunga pantalon scurt', slug: 'maneca-lunga-pantalon-scurt' },
         { name: 'Camasa de noapte', slug: 'camasa-de-noapte' },
         { name: 'Lenjerie de noapte', slug: 'lenjerie-de-noapte' },
         { name: 'Pijamale Premium', slug: 'pijamale-premium' },
@@ -138,7 +141,12 @@ export const navigationData: NavigationData = {
       name: 'Pijamale',
       slug: 'pijamale',
       subcategories: [
+        { name: 'Toate', slug: '' },
         { name: 'Pijamale pentru barbati', slug: 'pijamale-pentru-barbati' },
+        { name: 'Maneca lunga pantalon lung', slug: 'maneca-lunga-pantalon-lung' },
+        { name: 'Maneca scurta pantalon scurt', slug: 'maneca-scurta-pantalon-scurt' },
+        { name: 'Maneca scurta pantalon lung', slug: 'maneca-scurta-pantalon-lung' },
+        { name: 'Maneca lunga pantalon scurt', slug: 'maneca-lunga-pantalon-scurt' },
         { name: 'Pijamale pentru copii', slug: 'pijamale-pentru-copii' },
       ],
     },

@@ -394,9 +394,13 @@ export const generateUploadUrl = async (req, res) => {
         // Map MIME types to strict extensions
         const mimeToExt = {
             'image/jpeg': 'jpg',
-            'image/jpg': 'jpg',
+            'image/jpg': 'jpg',  
             'image/png': 'png',
-            'image/webp': 'webp'
+            'image/webp': 'webp',
+            'image/heic': 'heic',
+            'image/heif': 'heif',
+            'image/avif': 'avif',
+            'image/gif': 'gif'
         };
 
         const extension = mimeToExt[fileType];
