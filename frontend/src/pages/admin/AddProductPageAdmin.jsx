@@ -93,14 +93,13 @@ export default function CreateProduct() {
     setFormData((prev) => ({ ...prev, bigSizes: e.target.checked }));
   };
 
-  const handleFileChange = (e) => {
+  // --- FIX MAJOR: CITIRE INSTANTANEE A FIȘIERELOR ---
+  const handleFileChange = async (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
       
       const validFiles = filesArray.filter(file => {
-        if (file.type) {
-          return file.type.startsWith('image/');
-        }
+        if (file.type) return file.type.startsWith('image/');
         const name = file.name.toLowerCase();
         return name.match(/\.(jpg|jpeg|png|webp|heic|heif|avif|gif)$/);
       });
@@ -109,10 +108,33 @@ export default function CreateProduct() {
         toast.error('Unele fișiere nu au putut fi adăugate (doar imagini permise).');
       }
 
-      const newPreviews = validFiles.map(file => URL.createObjectURL(file));
+      const safeFiles = [];
+      const newPreviews = [];
 
-      setImageFiles(prev => [...prev, ...validFiles]);
+      // Pentru fiecare fișier, îl citim în secunda 1, cât avem permisiune de la Android
+      for (const file of validFiles) {
+        try {
+          // Extragem datele raw ale imaginii IMEDIAT
+          const buffer = await file.arrayBuffer();
+          
+          // Construim un fișier NOU care trăiește doar în memoria browserului nostru
+          const safeFile = new File([buffer], file.name, {
+            type: file.type || 'image/jpeg',
+          });
+
+          safeFiles.push(safeFile);
+          newPreviews.push(URL.createObjectURL(safeFile));
+        } catch (err) {
+          console.error("Eroare la citirea fișierului din cloud/Google Photos:", err);
+          toast.error(`Eroare la adăugarea pozei ${file.name}. Descarcă poza fizic în telefon mai întâi.`);
+        }
+      }
+
+      setImageFiles(prev => [...prev, ...safeFiles]);
       setImagePreviews(prev => [...prev, ...newPreviews]);
+      
+      // Resetăm input-ul ca browserul să prindă din nou onChange dacă urcă aceeași poză 
+      e.target.value = '';
     }
   };
 
@@ -134,20 +156,16 @@ export default function CreateProduct() {
     try {
       let uploadedUrls = [];
 
+      // Aici fișierele (imageFiles) sunt deja sigure, citite și imune la Android Permission Drop
       if (imageFiles.length > 0) {
-        const uploadPromises = imageFiles.map(async (file) => {
+        const uploadPromises = imageFiles.map(async (safeFile) => {
           
-          // FORȚĂM CITIREA FIȘIERULUI AICI (Fix pentru Google Photos)
-          // Transformăm fișierul într-un buffer real în memorie înainte de upload
-          const arrayBuffer = await file.arrayBuffer();
-          const fileType = file.type || 'image/jpeg';
-
           // A. Get Presigned URL
           const presignRes = await fetch(`${API_URL}/products/admin/upload-url`, {
             method: 'POST',
             credentials: "include", 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileType: fileType }), 
+            body: JSON.stringify({ fileType: safeFile.type }), 
           });
           
           if (!presignRes.ok) throw new Error("Nu s-a putut genera URL-ul de încărcare");
@@ -156,9 +174,8 @@ export default function CreateProduct() {
           // B. Upload File directly to Cloudflare R2
           const uploadRes = await fetch(uploadUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': fileType },
-            // Trimitem ArrayBuffer-ul garantat citit, nu obiectul File virtual
-            body: arrayBuffer, 
+            headers: { 'Content-Type': safeFile.type },
+            body: safeFile, // Acum trimitem direct fișierul clonat, care e sigur 100%
             credentials: "omit"
           });
 
