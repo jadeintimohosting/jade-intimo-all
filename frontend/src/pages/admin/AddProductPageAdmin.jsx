@@ -104,17 +104,25 @@ export default function CreateProduct() {
     if (e.target.files && e.target.files.length > 0) {
       const filesArray = Array.from(e.target.files);
       
-      // Filter out non-images just in case
-      const validFiles = filesArray.filter(file => file.type.startsWith('image/'));
+      // Filtru îmbunătățit care nu mai blochează Chrome-ul pe Android
+      const validFiles = filesArray.filter(file => {
+        // Dacă browserul știe tipul, e perfect
+        if (file.type) {
+          return file.type.startsWith('image/');
+        }
+        // Fallback pentru Chrome pe Android: verificăm extensia din nume
+        const name = file.name.toLowerCase();
+        return name.match(/\.(jpg|jpeg|png|webp|heic|heif|avif|gif)$/);
+      });
       
       if (validFiles.length !== filesArray.length) {
         toast.error('Doar fișierele imagine sunt permise.');
       }
 
-      // Create preview URLs
+      // Creăm URL-urile de preview
       const newPreviews = validFiles.map(file => URL.createObjectURL(file));
 
-      // Append to existing arrays
+      // Adăugăm în state
       setImageFiles(prev => [...prev, ...validFiles]);
       setImagePreviews(prev => [...prev, ...newPreviews]);
     }
@@ -146,7 +154,7 @@ export default function CreateProduct() {
             method: 'POST',
             credentials: "include", 
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileType: file.type }),
+            body: JSON.stringify({ fileType: file.type || 'image/jpeg' }), // Fallback type if empty
           });
           
           if (!presignRes.ok) throw new Error("Nu s-a putut genera URL-ul de încărcare");
@@ -155,7 +163,7 @@ export default function CreateProduct() {
           // B. Upload File directly to Cloudflare R2
           const uploadRes = await fetch(uploadUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': file.type },
+            headers: { 'Content-Type': file.type || 'image/jpeg' }, // Fallback type if empty
             body: file,
             credentials: "omit"
           });
@@ -260,7 +268,8 @@ export default function CreateProduct() {
             <input 
               type="file" 
               id="image-upload" 
-              accept="image/jpeg, image/png, image/webp" 
+              // Modificat pentru a funcționa corect și pe Android (Chrome) și pe iOS
+              accept="image/*, .heic, .heif, .avif" 
               multiple 
               className="hidden" 
               onChange={handleFileChange} 
@@ -270,7 +279,7 @@ export default function CreateProduct() {
                 <Upload className="h-8 w-8 text-blue-500" />
               </div>
               <span className="text-base font-medium text-gray-700">Apasă pentru a încărca imagini</span>
-              <span className="text-sm text-gray-400 mt-1">Sunt permise formatele JPG, PNG și WebP</span>
+              <span className="text-sm text-gray-400 mt-1">Sunt permise formatele JPG, PNG, WebP, HEIC și AVIF</span>
             </label>
           </div>
         </div>
