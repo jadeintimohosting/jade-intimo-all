@@ -2,7 +2,7 @@ import logger from '#config/logger.js';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-key-in-development';
-const JWT_EXPIRES_IN = '1d';
+const JWT_EXPIRES_IN = '15d';
 
 export const jwttoken = {
   sign: payload => {
