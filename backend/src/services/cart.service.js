@@ -63,7 +63,7 @@ export const getCartProds = async (userId) => {
         return Object.values(groupedData);
 
     } catch (error) {
-        logger.error("Error in getCartProds service:", error);
+        logger.error(`getCartProds error (user=${userId}): ${error.message}`, error);
         throw new Error("Could not retrieve grouped cart data");
     }
 };
@@ -111,7 +111,10 @@ export const addProdToCart = async (userId, productId, variantId, quantity = 1) 
         return newItem;
 
     } catch (error) {
-        logger.error("Error in addProdToCart service:", error);
+        logger.error(
+            `addProdToCart error (user=${userId}, productId=${productId}, variantId=${variantId}, qty=${quantity}): ${error.message}`,
+            error
+        );
         throw new Error("Could not add item to cart");
     }
 };
@@ -124,6 +127,7 @@ export const deleteProduct = async (userId, variantId) => {
             .where(eq(carts.user_id, userId));
 
         if (!cart) {
+            logger.warn(`deleteProduct: no cart found for user ${userId}`);
             throw new Error("Cart not found for this user");
         }
 
@@ -138,20 +142,22 @@ export const deleteProduct = async (userId, variantId) => {
             .returning();
 
         if (!deletedItem) {
-            logger.warn(`Attempted to delete non-existent item: Variant ${variantId} in Cart ${cart.id}`);
+            logger.warn(`deleteProduct: attempted to delete non-existent variant ${variantId} in cart ${cart.id} (user=${userId})`);
             return null;
         }
 
-        logger.info(`Product variant ${variantId} removed from cart ${cart.id}`);
-        
+        logger.info(`Variant ${variantId} removed from cart ${cart.id} (user=${userId})`);
+
         return {
             ...deletedItem,
             cartId: cart.id
         };
 
     } catch (error) {
-        logger.error("Error in deleteProduct service:", error);
-        throw new Error("Could not delete item from cart"); 
+        if (error.message !== "Cart not found for this user") {
+            logger.error(`deleteProduct error (user=${userId}, variantId=${variantId}): ${error.message}`, error);
+        }
+        throw new Error("Could not delete item from cart");
     }
 };
 
@@ -164,6 +170,7 @@ export const updateProdQuantity=async (userId,variantId,nr)=>{
             .limit(1);
 
         if (!cart) {
+            logger.warn(`updateProdQuantity: no cart found for user ${userId}`);
             throw new Error("Cart not found for this user");
         }
 
@@ -174,11 +181,12 @@ export const updateProdQuantity=async (userId,variantId,nr)=>{
                 and(
                     eq(cart_items.variant_id, variantId),
                     eq(cart_items.cart_id, cart.id)
-                ) 
+                )
             )
             .limit(1);
 
         if (!item) {
+            logger.warn(`updateProdQuantity: variant ${variantId} not in cart ${cart.id} (user=${userId})`);
             throw new Error("Item not found in cart");
         }
         const delta = nr > 0 ? 1 : nr < 0 ? -1 : 0;
@@ -212,9 +220,17 @@ export const updateProdQuantity=async (userId,variantId,nr)=>{
             .returning();
 
         return { action: "updated", item: updatedItem, cartId: cart.id };
-        
+
     } catch (error) {
-        logger.error("Error updating product quantity:", error);
+        if (
+            error.message !== "Cart not found for this user" &&
+            error.message !== "Item not found in cart"
+        ) {
+            logger.error(
+                `updateProdQuantity error (user=${userId}, variantId=${variantId}, delta=${nr}): ${error.message}`,
+                error
+            );
+        }
         throw error;
     }
 }

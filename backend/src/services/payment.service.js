@@ -11,21 +11,26 @@ const stripe=new Stripe(process.env.STRIPE_API_KEY)
 
 
 const getProductsFromDb = async (items) => {
-    const variantIds = items.map((item) => item.variant_id);
-    if (variantIds.length === 0) return new Map();
+    try {
+        const variantIds = items.map((item) => item.variant_id);
+        if (variantIds.length === 0) return new Map();
 
-    const dbItems = await db
-        .select({
-            variantId: product_variants.id,
-            size: product_variants.size,
-            productName: products.name,
-            price: products.price, // Assumed to be in BANI (e.g., 5000 for 50 RON)
-        })
-        .from(product_variants)
-        .leftJoin(products, eq(product_variants.product_id, products.id))
-        .where(inArray(product_variants.id, variantIds));
+        const dbItems = await db
+            .select({
+                variantId: product_variants.id,
+                size: product_variants.size,
+                productName: products.name,
+                price: products.price, // Assumed to be in BANI (e.g., 5000 for 50 RON)
+            })
+            .from(product_variants)
+            .leftJoin(products, eq(product_variants.product_id, products.id))
+            .where(inArray(product_variants.id, variantIds));
 
-    return new Map(dbItems.map((item) => [item.variantId, item]));
+        return new Map(dbItems.map((item) => [item.variantId, item]));
+    } catch (error) {
+        logger.error(`getProductsFromDb error (itemCount=${items?.length}): ${error.message}`, error);
+        throw error;
+    }
 };
 
 export const createPaymentSession = async ({ items }) => {
@@ -37,8 +42,14 @@ export const createPaymentSession = async ({ items }) => {
         const line_items = items.map((item) => {
             const dbItem = dbItemsMap.get(item.variant_id);
 
-            if (!dbItem) throw new Error(`Product ${item.variant_id} not found`);
-            if (!dbItem.price) throw new Error(`Price missing for: ${dbItem.productName}`);
+            if (!dbItem) {
+                logger.warn(`createPaymentSession: variant ${item.variant_id} not found in DB`);
+                throw new Error(`Product ${item.variant_id} not found`);
+            }
+            if (!dbItem.price) {
+                logger.warn(`createPaymentSession: price missing for variant ${item.variant_id} (product="${dbItem.productName}")`);
+                throw new Error(`Price missing for: ${dbItem.productName}`);
+            }
 
             // Add to running total for shipping calculation
             calculatedSubtotal += dbItem.price * item.quantity;
@@ -84,7 +95,7 @@ export const createPaymentSession = async ({ items }) => {
         return session.url;
 
     } catch (error) {
-        logger.error("Stripe Service Error:", error);
+        logger.error(`createPaymentSession error (itemCount=${items?.length}): ${error.message}`, error);
         throw error;
     }
 };

@@ -38,51 +38,62 @@ export const getProducts = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error("Error in getting products:", error);
+        logger.error(`Error in getProducts (query=${JSON.stringify(req.query)}): ${error.message}`, error);
         res.status(500).json({
             error: "Internal Server Error",
-            message: error.message
+            message: "Eroare la preluarea produselor"
         });
     }
 };
 
-export const getNewProducts=async (req,res)=>{
+export const getNewProducts = async (req, res) => {
     try {
-        const {limit}=req.query
+        const { limit } = req.query
 
-        const data=await retrieveNewArrivals(limit)
+        const data = await retrieveNewArrivals(limit)
 
-        logger.info("new products retrieved sucessfully")
+        logger.info(`New arrivals retrieved (limit=${limit || 'default'})`)
 
         res.status(200).json({
-            message:"new products retrieved sucessfully",
-            products:data
+            message: "new products retrieved sucessfully",
+            products: data
         })
     } catch (error) {
-        logger.error('Error in getting new products', error);
+        logger.error(`Error fetching new arrivals (limit=${req.query?.limit}): ${error.message}`, error);
         res.status(500).json({
             error: "Internal Server Error",
-            message: error.message
+            message: "Eroare la preluarea noilor produse"
         });
     }
 }
 
-export const getProductById=async (req,res)=>{
-    const {id}=req.params
+export const getProductById = async (req, res) => {
+    const { id } = req.params
+    const productId = Number(id)
     try {
-        const data=await retrieveProductById(Number(id))
-        
-        logger.info(`product with id ${id} retrieved successfully`)
+        if (Number.isNaN(productId)) {
+            logger.warn(`getProductById called with invalid id: ${id}`)
+            return res.status(400).json({ error: "Bad Request", message: "ID produs invalid" })
+        }
+
+        const data = await retrieveProductById(productId)
+
+        if (!data) {
+            logger.warn(`getProductById: product ${productId} not found`)
+            return res.status(404).json({ error: "Not Found", message: "Produsul nu a fost găsit" })
+        }
+
+        logger.info(`Product ${productId} retrieved successfully`)
 
         res.status(200).json({
-            message:`product with id ${id} retrieved successfully`,
-            product:data
+            message: `product with id ${productId} retrieved successfully`,
+            product: data
         })
     } catch (error) {
-        logger.error(`Error in getting product with id ${id}:`, error);
+        logger.error(`Error retrieving product id=${productId}: ${error.message}`, error);
         res.status(500).json({
             error: "Internal Server Error",
-            message: error.message
+            message: "Eroare la preluarea produsului"
         });
     }
 }
@@ -90,22 +101,33 @@ export const getProductById=async (req,res)=>{
 //admin role controllers
 
 
-export const getVariantsById=async (req,res)=>{
-    const {id}=req.params
+export const getVariantsById = async (req, res) => {
+    const { id } = req.params
+    const productId = Number(id)
     try {
-        const data=await retrieveProductById(Number(id))
-        
-        logger.info(`product with id ${id} retrieved successfully`)
+        if (Number.isNaN(productId)) {
+            logger.warn(`getVariantsById called with invalid id: ${id}`)
+            return res.status(400).json({ error: "Bad Request", message: "ID produs invalid" })
+        }
+
+        const data = await retrieveProductById(productId)
+
+        if (!data) {
+            logger.warn(`getVariantsById: product ${productId} not found`)
+            return res.status(404).json({ error: "Not Found", message: "Produsul nu a fost găsit" })
+        }
+
+        logger.info(`Variants for product ${productId} retrieved successfully`)
 
         res.status(200).json({
-            message:`product with id ${id} retrieved successfully`,
-            product:data
+            message: `product with id ${productId} retrieved successfully`,
+            product: data
         })
     } catch (error) {
-        logger.error(`Error in getting product with id ${id}:`, error);
+        logger.error(`Error retrieving variants for product id=${productId}: ${error.message}`, error);
         res.status(500).json({
             error: "Internal Server Error",
-            message: error.message
+            message: "Eroare la preluarea variantelor"
         });
     }
 }
@@ -134,10 +156,10 @@ export const getProductsAdmin = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error("Error in getting products for admin:", error);
+        logger.error(`Error in getProductsAdmin (query=${JSON.stringify(req.query)}): ${error.message}`, error);
         res.status(500).json({
             error: "Internal Server Error",
-            message: error.message
+            message: "Eroare la preluarea produselor pentru admin"
         });
     }
 };
@@ -181,71 +203,88 @@ export const createProductAdmin = async (req, res) => {
         // 3. Insert
         const product = await insertProduct(result.data);
 
+        logger.info(`Product created by admin ${req.user?.email || 'unknown'}: id=${product.id}, name="${product.name}"`);
+
         return res.status(201).json({
             message: "Product created successfully",
             product: product
         });
 
     } catch (error) {
-        logger.error(`Error creating product:`, error);
-        return res.status(500).json({ 
-            error: 'Internal server error', 
-            message: error.message 
+        logger.error(`Error creating product (admin=${req.user?.email}): ${error.message}`, error);
+        return res.status(500).json({
+            error: 'Internal server error',
+            message: "Eroare la crearea produsului"
         });
     }
 };
 
-export const updateProductAdmin=async (req,res)=>{
+export const updateProductAdmin = async (req, res) => {
+    const { id } = req.params
+    const productId = Number(id)
     try {
-        const validationResult=updateProductScheema.safeParse(req.body)
-        const {id}=req.params
+        if (Number.isNaN(productId)) {
+            logger.warn(`updateProductAdmin called with invalid id: ${id}`)
+            return res.status(400).json({ error: "Bad Request", message: "ID produs invalid" })
+        }
 
-        if(!validationResult.success){
+        const validationResult = updateProductScheema.safeParse(req.body)
+
+        if (!validationResult.success) {
+            logger.warn(`updateProductAdmin validation failed for product ${productId}`);
             return res.status(400).json({
                 error: 'Actualizarea Produsului Esuata',
                 details: formatValidationError(validationResult.error),
             });
         }
 
-        const data={...validationResult.data}
+        const data = { ...validationResult.data }
 
-        const product=await updateProduct(Number(id),data)
+        const product = await updateProduct(productId, data)
 
         if (!product) {
+            logger.warn(`updateProductAdmin: product ${productId} not found`);
             return res.status(404).json({ error: 'Produsul nu a fost găsit', message: 'Produsul nu a fost găsit' });
         }
 
+        logger.info(`Product ${productId} updated by admin ${req.user?.email || 'unknown'}`);
+
         return res.status(200).json({
-            message:"product updated sucessfully",
-            product:product
+            message: "product updated sucessfully",
+            product: product
         })
     } catch (error) {
-        logger.error('product update error', error);
+        logger.error(`Error updating product id=${productId} (admin=${req.user?.email}): ${error.message}`, error);
         return res.status(500).json({ error: 'Internal server error', message: 'Eroare internă a serverului' });
     }
 }
 
 export const deleteProductAdmin = async (req, res) => {
+    const { id } = req.params;
+    const productId = Number(id);
     try {
-        const { id } = req.params;
+        if (Number.isNaN(productId)) {
+            logger.warn(`deleteProductAdmin called with invalid id: ${id}`)
+            return res.status(400).json({ error: "Bad Request", message: "ID produs invalid" })
+        }
 
         // --- MODIFICARE AICI ---
         // Facem update în loc de delete fizic
         const [deleted] = await db
             .update(products)
             .set({ is_deleted: true })
-            .where(eq(products.id, Number(id)))
+            .where(eq(products.id, productId))
             .returning();
 
         if (!deleted) {
+            logger.warn(`deleteProductAdmin: product ${productId} not found`);
             return res.status(404).json({
                 error: "Produsul nu a fost găsit",
-                message: `Nu există niciun produs cu ID-ul ${id}`
+                message: `Nu există niciun produs cu ID-ul ${productId}`
             });
         }
 
-        // Am actualizat și mesajul de log pentru claritate în debug
-        logger.info(`Product soft-deleted by admin: ${deleted.name} (ID: ${deleted.id})`);
+        logger.info(`Product soft-deleted by admin ${req.user?.email || 'unknown'}: "${deleted.name}" (id=${deleted.id})`);
 
         return res.status(200).json({
             message: "Produsul a fost șters cu succes (Soft Delete)",
@@ -253,39 +292,43 @@ export const deleteProductAdmin = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`Error deleting product ${req.params.id}:`, error);
-        return res.status(500).json({ 
+        logger.error(`Error soft-deleting product id=${productId} (admin=${req.user?.email}): ${error.message}`, error);
+        return res.status(500).json({
             error: "Internal server error",
-            message: error.message 
+            message: "Eroare la ștergerea produsului"
         });
     }
 };
 
-export const createVariantAdmin=async (req,res)=>{
+export const createVariantAdmin = async (req, res) => {
+    const { id } = req.params
+    const productId = Number(id)
     try {
-        const {id}=req.params
-        const productId=Number(id)
+        if (Number.isNaN(productId)) {
+            logger.warn(`createVariantAdmin called with invalid product id: ${id}`)
+            return res.status(400).json({ error: "Bad Request", message: "ID produs invalid" })
+        }
 
-        const validationResult=createVariantScheema.safeParse(req.body)
+        const validationResult = createVariantScheema.safeParse(req.body)
 
-        if(!validationResult.success){
+        if (!validationResult.success) {
+            logger.warn(`createVariantAdmin validation failed for product ${productId}`);
             return res.status(400).json({
                 error: 'Crearea Variantei Esuata',
                 details: formatValidationError(validationResult.error),
             });
         }
 
-        const data={...validationResult.data}
+        const data = { ...validationResult.data }
 
-        const variant=await insertVariant(productId,data)
+        const variant = await insertVariant(productId, data)
 
         if (!variant) {
-            logger.error('Insert returned no variant');
+            logger.error(`createVariantAdmin: insert returned no variant for product ${productId}`);
             return res.status(500).json({ error: 'Could not create variant', message: 'Nu s-a putut crea varianta' });
         }
 
-        logger.info(`Product with id ${variant.id} created successfully`);
-
+        logger.info(`Variant ${variant.id} created for product ${productId} by admin ${req.user?.email || 'unknown'}`);
 
         return res.status(201).json({
             message: "variant created successfully",
@@ -293,58 +336,63 @@ export const createVariantAdmin=async (req,res)=>{
         });
 
     } catch (error) {
-        logger.error("error creating product variant")
-        return res.status(500).json({ 
+        logger.error(`Error creating variant for product id=${productId} (admin=${req.user?.email}): ${error.message}`, error)
+        return res.status(500).json({
             error: "Internal server error",
-            message: error.message 
+            message: "Eroare la crearea variantei"
         });
     }
 }
 
-export const updateVariantAdmin=async (req,res)=>{
+export const updateVariantAdmin = async (req, res) => {
+    const { id } = req.params
+    const variantId = Number(id)
     try {
-        const {id}=req.params
-        const variantId=Number(id)
+        if (Number.isNaN(variantId)) {
+            logger.warn(`updateVariantAdmin called with invalid id: ${id}`)
+            return res.status(400).json({ error: "Bad Request", message: "ID variantă invalid" })
+        }
 
-        const validationResult=updateVariantScheema.safeParse(req.body)
+        const validationResult = updateVariantScheema.safeParse(req.body)
 
-        if(!validationResult.success){
+        if (!validationResult.success) {
+            logger.warn(`updateVariantAdmin validation failed for variant ${variantId}`);
             return res.status(400).json({
                 error: 'Actualizarea Variantei Esuata',
                 details: formatValidationError(validationResult.error),
             });
         }
 
-        const data={...validationResult.data}
+        const data = { ...validationResult.data }
 
-        const updatedVariant=await updateVariant(variantId,data)
+        const updatedVariant = await updateVariant(variantId, data)
 
-        if(!updatedVariant){
-            logger.error('Update returned no variant');
-            return res.status(500).json({ error: 'Could not update variant', message: 'Nu s-a putut actualiza varianta' });
+        if (!updatedVariant) {
+            logger.warn(`updateVariantAdmin: variant ${variantId} not found`);
+            return res.status(404).json({ error: 'Could not update variant', message: 'Nu s-a putut actualiza varianta' });
         }
 
-        logger.info(`Product with id ${variantId} updated successfully`);
+        logger.info(`Variant ${variantId} updated by admin ${req.user?.email || 'unknown'}`);
 
         return res.status(201).json({
             message: "variant updated successfully",
             variant: updatedVariant
         });
     } catch (error) {
-        logger.error("error updating product variant")
-        return res.status(500).json({ 
+        logger.error(`Error updating variant id=${variantId} (admin=${req.user?.email}): ${error.message}`, error)
+        return res.status(500).json({
             error: "Internal server error",
-            message: error.message 
+            message: "Eroare la actualizarea variantei"
         });
     }
 }
 
 export const deleteVariantAdmin = async (req, res) => {
+    const { id } = req.params;
+    const variantId = parseInt(id, 10);
     try {
-        const { id } = req.params;
-        const variantId = parseInt(id, 10);
-
         if (isNaN(variantId)) {
+            logger.warn(`deleteVariantAdmin called with invalid id: ${id}`)
             return res.status(400).json({ message: "ID-ul trebuie să fie un număr valid" });
         }
 
@@ -357,8 +405,11 @@ export const deleteVariantAdmin = async (req, res) => {
             .returning();
 
         if (result.length === 0) {
+            logger.warn(`deleteVariantAdmin: variant ${variantId} not found`);
             return res.status(404).json({ message: "Varianta nu a fost găsită" });
         }
+
+        logger.info(`Variant ${variantId} soft-deleted by admin ${req.user?.email || 'unknown'}`);
 
         return res.status(200).json({
             message: "Varianta a fost ștearsă cu succes",
@@ -366,10 +417,10 @@ export const deleteVariantAdmin = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`Eroare la ștergerea variantei de produs: ${error.message}`); 
-        return res.status(500).json({ 
+        logger.error(`Error soft-deleting variant id=${variantId} (admin=${req.user?.email}): ${error.message}`, error);
+        return res.status(500).json({
             error: "Eroare internă a serverului",
-            message: error.message 
+            message: "Eroare la ștergerea variantei"
         });
     }
 }
@@ -432,7 +483,7 @@ export const generateUploadUrl = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error("Error generating upload URL:", error);
+        logger.error(`Error generating upload URL (fileType=${req.body?.fileType}): ${error.message}`, error);
         return res.status(500).json({ error: "Could not generate upload URL", message: 'Nu s-a putut genera URL-ul de încărcare' });
     }
 };

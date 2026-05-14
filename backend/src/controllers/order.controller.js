@@ -15,26 +15,28 @@ import { orderShipped } from "#utils/emails/orderShipping.js";
 const stripe = new Stripe(process.env.STRIPE_API_KEY);
 
 export const placeOrderController = async (req, res) => {
+    let user_id = null;
+    let stripeSessionId = null;
     try {
         // 1. User Authentication (Extract ID from token)
         const token = req.cookies.token;
-        let user_id = null;
 
         if (token) {
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET);
                 user_id = decoded.id;
             } catch (err) {
-                logger.warn("Invalid token on checkout, proceeding as guest");
+                logger.warn(`placeOrderController: invalid token on checkout, proceeding as guest (${err.message})`);
             }
         }
-    
-        const body = req.body; 
+
+        const body = req.body;
 
         // 2. Validate Body Structure (Zod)
         const result = createOrderSchema.safeParse(body);
 
         if (!result.success) {
+            logger.warn(`placeOrderController validation failed (user=${user_id || 'guest'})`);
             return res.status(400).json({
                 error: "Order Validation Failed",
                 message: 'Validarea comenzii a eșuat',
@@ -43,17 +45,18 @@ export const placeOrderController = async (req, res) => {
         }
 
         const orderData = result.data;
-        
-        const stripeSessionId = body.stripe_session_id || null;
+
+        stripeSessionId = body.stripe_session_id || null;
 
         // 3. SECURITY & PAYMENT VERIFICATION
         if (orderData.payment_method === 'credit_card') {
-            
+
             // A. Check if Session ID is present
             if (!stripeSessionId) {
-                return res.status(400).json({ 
-                    error: "Payment Verification Failed", 
-                    message: "Missing Stripe Session ID" 
+                logger.warn(`placeOrderController: credit_card order missing stripe_session_id (user=${user_id || 'guest'})`);
+                return res.status(400).json({
+                    error: "Payment Verification Failed",
+                    message: "Missing Stripe Session ID"
                 });
             }
 
@@ -65,7 +68,7 @@ export const placeOrderController = async (req, res) => {
                 .where(eq(orders.stripe_payment_id, stripeSessionId));
 
             if (existingOrder.length > 0) {
-                logger.info(`Duplicate order attempt blocked for session ${stripeSessionId}`);
+                logger.info(`Duplicate order attempt blocked for session ${stripeSessionId}, returning existing order ${existingOrder[0].id}`);
                 return res.status(200).json({
                     message: "Order already processed",
                     id: existingOrder[0].id
@@ -75,19 +78,19 @@ export const placeOrderController = async (req, res) => {
             // C. Verify Payment Status with Stripe
             try {
                 const session = await stripe.checkout.sessions.retrieve(stripeSessionId);
-                
+
                 if (session.payment_status !== 'paid') {
-                    logger.warn(`Unpaid session attempt: ${stripeSessionId}`);
-                    return res.status(402).json({ 
-                        error: "Payment Required", 
-                        message: "The payment has not been confirmed by Stripe." 
+                    logger.warn(`Unpaid Stripe session ${stripeSessionId} (status=${session.payment_status})`);
+                    return res.status(402).json({
+                        error: "Payment Required",
+                        message: "The payment has not been confirmed by Stripe."
                     });
                 }
             } catch (stripeError) {
-                logger.error("Stripe retrieval failed:", stripeError);
-                return res.status(400).json({ 
-                    error: "Payment Verification Failed", 
-                    message: "Invalid Session ID" 
+                logger.error(`Stripe session retrieval failed (sessionId=${stripeSessionId}): ${stripeError.message}`, stripeError);
+                return res.status(400).json({
+                    error: "Payment Verification Failed",
+                    message: "Invalid Session ID"
                 });
             }
         }
@@ -100,11 +103,11 @@ export const placeOrderController = async (req, res) => {
         const insertResult = await createOrder({
             ...orderData,
             user_id: user_id,
-            stripe_payment_id: stripeSessionId 
-        });        
+            stripe_payment_id: stripeSessionId
+        });
 
         if (!insertResult) {
-            logger.error("Insert returned no order");
+            logger.error(`placeOrderController: createOrder returned no result (user=${user_id || 'guest'}, sessionId=${stripeSessionId})`);
             return res.status(500).json({
                 error: "Could not place order",
                 message: 'Eroare la plasarea comenzii'
@@ -142,7 +145,7 @@ export const placeOrderController = async (req, res) => {
         })
         
 
-        logger.info(`Order with id ${insertResult.orderId} placed successfully`);
+        logger.info(`Order ${insertResult.orderId} placed successfully (user=${user_id || 'guest'}, payment=${orderData.payment_method})`);
 
 
         return res.status(201).json({
@@ -151,47 +154,56 @@ export const placeOrderController = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`Error placing order:`, error);
+        const msg = error?.message || '';
+        logger.error(`Error placing order (user=${user_id || 'guest'}, sessionId=${stripeSessionId}): ${msg}`, error);
 
-        if (error.message.includes("Insufficient stock") || error.message.includes("Product variant")) {
-            return res.status(409).json({ 
+        if (msg.includes("Insufficient stock") || msg.includes("Product variant")) {
+            return res.status(409).json({
                 error: "Inventory Error",
-                message: error.message 
+                message: msg
             });
         }
 
-        if (error.message.includes("not found")) {
+        if (msg.includes("not found")) {
             return res.status(404).json({ error: "Order not found", message: 'Comanda nu a fost găsită' });
         }
 
-        return res.status(500).json({ 
+        return res.status(500).json({
             error: 'Internal server error',
-            message: error.message 
+            message: 'Eroare la plasarea comenzii'
         });
     }
 };
 
-export const checkStock=async (req,res)=>{
+export const checkStock = async (req, res) => {
     try {
-        const items=req.body.items
+        const items = req.body.items
+        if (!Array.isArray(items)) {
+            logger.warn('checkStock called without an items array');
+            return res.status(400).json({
+                error: "Bad Request",
+                message: "Lista de produse este obligatorie"
+            });
+        }
         await verifyStock(items)
 
         return res.status(200).json({
-            message:"all items in stock!"
+            message: "all items in stock!"
         })
     } catch (error) {
-        logger.error(`Error verifying stock:`, error);
+        const msg = error?.message || '';
+        logger.error(`Error verifying stock: ${msg}`, error);
 
-        if (error.message.includes("Insufficient stock") || error.message.includes("Product variant")) {
+        if (msg.includes("Insufficient stock") || msg.includes("Product variant")) {
             return res.status(409).json({ // 409 = Conflict
                 error: "Inventory Error",
-                message: error.message 
+                message: msg
             });
         }
 
-        return res.status(500).json({ 
+        return res.status(500).json({
             error: 'Internal server error',
-            message: error.message 
+            message: 'Eroare la verificarea stocului'
         });
     }
 }
@@ -201,58 +213,65 @@ export const payOrder = async (req, res) => {
         const { items } = req.body;
 
         if (!items || items.length === 0) {
+            logger.warn('payOrder called with no items');
             return res.status(400).json({ error: "No items provided", message: 'Nu au fost furnizate produse' });
         }
 
         const paymentUrl = await createPaymentSession({ items });
 
+        logger.info(`Stripe payment session created for ${items.length} item(s)`);
+
         return res.status(200).json({ url: paymentUrl });
 
     } catch (error) {
-        logger.error("Payment Controller Error:", error);
-        return res.status(500).json({ 
+        logger.error(`Error creating payment session (itemCount=${req.body?.items?.length}): ${error.message}`, error);
+        return res.status(500).json({
             error: "Failed to initialize payment",
-            message: 'Eroare la inițierea plății',
-            details: error.message 
+            message: 'Eroare la inițierea plății'
         });
     }
 };
 
-export const getOrdersController=async (req,res)=>{
+export const getOrdersController = async (req, res) => {
+    const userId = req.user?.id
     try {
-        const userId=req.user.id
-        const result=await getOrdersByUserId(userId)
-        
+        const result = await getOrdersByUserId(userId)
+
         return res.status(200).json({
             result
         })
     } catch (error) {
-        logger.error(`Error getting orders:`, error);
-        return res.status(500).json({ 
+        logger.error(`Error fetching orders for user ${userId}: ${error.message}`, error);
+        return res.status(500).json({
             error: 'Internal server error',
-            message: error.message 
+            message: 'Eroare la preluarea comenzilor'
         });
     }
 }
 
-export const getOrderDetails=async (req,res)=>{
+export const getOrderDetails = async (req, res) => {
+    const userId = req.user?.id
+    const orderId = Number(req.params.id)
     try {
-        const userId=req.user.id
-        const orderId=Number(req.params.id)
+        if (Number.isNaN(orderId)) {
+            logger.warn(`getOrderDetails called with invalid orderId by user ${userId}: ${req.params.id}`);
+            return res.status(400).json({ error: "Bad Request", message: "ID comandă invalid" });
+        }
 
-        const result=await fetchDetails(userId,orderId)
+        const result = await fetchDetails(userId, orderId)
 
         res.status(200).json(result)
     } catch (error) {
-        logger.error(`Error getting order details:`, error);
+        const msg = error?.message || '';
+        logger.error(`Error fetching order details (user=${userId}, orderId=${orderId}): ${msg}`, error);
 
-        if (error.message.includes("not found")) {
+        if (msg.includes("not found") || msg.includes("access denied")) {
             return res.status(404).json({ error: "Order not found", message: 'Comanda nu a fost găsită' });
         }
 
-        return res.status(500).json({ 
+        return res.status(500).json({
             error: 'Internal server error',
-            message: error.message 
+            message: 'Eroare la preluarea detaliilor comenzii'
         });
     }
 }
@@ -260,72 +279,88 @@ export const getOrderDetails=async (req,res)=>{
 
 //admin
 
-export const getAdminOrders=async (req,res)=>{
+export const getAdminOrders = async (req, res) => {
     try {
-        const {page,limit,email,orderId}=req.query
+        const { page, limit, email, orderId } = req.query
 
-        const pageNum=parseInt(page) || 1
-        const limitNum=parseInt(limit) || 10
+        const pageNum = parseInt(page) || 1
+        const limitNum = parseInt(limit) || 10
 
-        const result=await getAllOrdersAdmin(pageNum,limitNum,email,orderId)
-        
+        const result = await getAllOrdersAdmin(pageNum, limitNum, email, orderId)
+
         return res.status(200).json(result)
     } catch (error) {
-        logger.error(`Error getting orders:`, error);
-        return res.status(500).json({ 
+        logger.error(`Error fetching admin orders (query=${JSON.stringify(req.query)}, admin=${req.user?.email}): ${error.message}`, error);
+        return res.status(500).json({
             error: 'Internal server error',
-            message: error.message 
+            message: 'Eroare la preluarea comenzilor pentru admin'
         });
     }
 }
 
-export const getAdminOrder= async(req,res)=>{
+export const getAdminOrder = async (req, res) => {
+    const orderId = Number(req.params.id)
     try {
-        const orderId=Number(req.params.id)
+        if (Number.isNaN(orderId)) {
+            logger.warn(`getAdminOrder called with invalid orderId: ${req.params.id}`);
+            return res.status(400).json({ error: "Bad Request", message: "ID comandă invalid" });
+        }
 
-        const result=await fetchDetailsAdmin(orderId)
+        const result = await fetchDetailsAdmin(orderId)
 
         res.status(200).json(result)
     } catch (error) {
-        logger.error(`Error getting order details:`, error);
+        const msg = error?.message || '';
+        logger.error(`Error fetching admin order details (orderId=${orderId}, admin=${req.user?.email}): ${msg}`, error);
 
-        if (error.message.includes("not found")) {
+        if (msg.includes("not found") || msg.includes("access denied")) {
             return res.status(404).json({ error: "Order not found", message: 'Comanda nu a fost găsită' });
         }
 
-        return res.status(500).json({ 
+        return res.status(500).json({
             error: 'Internal server error',
-            message: error.message 
+            message: 'Eroare la preluarea detaliilor comenzii'
         });
     }
 }
 
 export const updateAdminOrder = async (req, res) => {
+    const orderId = Number(req.params.id);
+    const { status } = req.body;
     try {
-        const orderId = Number(req.params.id);
-        const { status } = req.body;
+        if (Number.isNaN(orderId)) {
+            logger.warn(`updateAdminOrder called with invalid orderId: ${req.params.id}`);
+            return res.status(400).json({ error: "Bad Request", message: "ID comandă invalid" });
+        }
 
         const result = await updateOrderAdmin(orderId, status);
 
-        sendEmail({
-            to:result.email,
-            subject:"Comanda este în curs de livrare",
-            text:"Comanda ta a fost procesată și este în drum spre tine!",
-            html:orderShipped(result.first_name,result.last_name,result.id)
+        const emailResult = await sendEmail({
+            to: result.email,
+            subject: "Comanda este în curs de livrare",
+            text: "Comanda ta a fost procesată și este în drum spre tine!",
+            html: orderShipped(result.first_name, result.last_name, result.id)
         })
+
+        if (!emailResult.success) {
+            logger.warn(`updateAdminOrder: shipping email failed for order ${orderId} to ${result.email}`);
+        }
+
+        logger.info(`Order ${orderId} status changed to "${status}" by admin ${req.user?.email || 'unknown'}`);
 
         res.status(200).json({
             message: "Order updated successfully",
             result: result
         });
     } catch (error) {
-        logger.error(`Error updating order:`, error);
+        const msg = error?.message || '';
+        logger.error(`Error updating order ${orderId} to status="${status}" (admin=${req.user?.email}): ${msg}`, error);
 
-        const statusCode = error.message.includes('invalid') || error.message.includes('găsită') ? 400 : 500;
+        const statusCode = msg.includes('invalid') || msg.includes('găsită') ? 400 : 500;
 
-        return res.status(statusCode).json({ 
+        return res.status(statusCode).json({
             error: statusCode === 500 ? 'Internal server error' : 'Validation Error',
-            message: error.message 
+            message: statusCode === 500 ? 'Eroare la actualizarea comenzii' : msg
         });
     }
 }

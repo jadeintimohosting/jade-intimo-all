@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer"
+import logger from "#config/logger.js"
 
 const transporter = nodemailer.createTransport({
   service: 'Gmail',
@@ -19,9 +20,10 @@ export async function sendEmail({ to, subject, text, html }) {
   };
   try {
     const info = await transporter.sendMail(mailOptions);
-    return { success: true };
+    logger.info(`Email sent to ${to} (subject="${subject}", messageId=${info.messageId})`);
+    return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email:', error);
+    logger.error(`Failed to send email to ${to} (subject="${subject}"): ${error.message}`, error);
     return { success: false, error };
   }
 }

@@ -21,7 +21,7 @@ export const adminRoute = (req,res,next) => {
 
       next();
     } catch (e) {
-      logger.error('Role verification error:', e);
+      logger.error(`adminRoute error on ${req.method} ${req.originalUrl} (user=${req.user?.email}): ${e.message}`, e);
       return res.status(500).json({
         error: 'Internal server error',
         message: 'Error during role verification',

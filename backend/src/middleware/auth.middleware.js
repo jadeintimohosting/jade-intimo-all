@@ -6,6 +6,7 @@ export const authenticateToken = (req, res, next) => {
     const token = req.cookies.token;
 
     if (!token) {
+      logger.warn(`authenticateToken: missing token on ${req.method} ${req.originalUrl}`);
       return res.status(401).json({
         error: 'Authentication required',
         message: 'No access token provided',
@@ -15,18 +16,18 @@ export const authenticateToken = (req, res, next) => {
     const decoded = jwttoken.verify(token);
     req.user = decoded;
 
-    logger.info(`User authenticated: ${decoded.email} (${decoded.role})`);
+    logger.info(`User authenticated: ${decoded.email} (role=${decoded.role}) on ${req.method} ${req.originalUrl}`);
     next();
   } catch (e) {
-    logger.error('Authentication error:', e);
-
     if (e.message === 'Failed to authenticate token') {
+      logger.warn(`authenticateToken: invalid/expired token on ${req.method} ${req.originalUrl}`);
       return res.status(401).json({
         error: 'Authentication failed',
         message: 'Invalid or expired token',
       });
     }
 
+    logger.error(`authenticateToken unexpected error on ${req.method} ${req.originalUrl}: ${e.message}`, e);
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Error during authentication',
@@ -56,7 +57,7 @@ export const requireRole = allowedRoles => {
 
       next();
     } catch (e) {
-      logger.error('Role verification error:', e);
+      logger.error(`requireRole error on ${req.method} ${req.originalUrl} (user=${req.user?.email}): ${e.message}`, e);
       return res.status(500).json({
         error: 'Internal server error',
         message: 'Error during role verification',

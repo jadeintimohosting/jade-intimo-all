@@ -128,44 +128,58 @@ const createOrder = async ({
             return { orderId: newOrder.id, status: "success" };
         });
 
+        logger.info(`Order ${result.orderId} created (user=${user_id || 'guest'}, total=${total_ammount}, items=${items.length})`);
+
         return result;
 
     } catch (error) {
-        console.error("Transaction Error:", error);
+        logger.error(
+            `createOrder transaction failed (user=${user_id || 'guest'}, email=${email}, total=${total_ammount}): ${error.message}`,
+            error
+        );
         throw error;
     }
 };
 
 const verifyStock = async (items) => {
-    const variantIds = items.map((item) => item.variant_id);
+    try {
+        const variantIds = items.map((item) => item.variant_id);
 
-    if (variantIds.length === 0) return true;
+        if (variantIds.length === 0) return true;
 
-    const dbVariants = await db
-        .select({
-            id: product_variants.id,
-            quantity: product_variants.quantity,
-        })
-        .from(product_variants)
-        .where(inArray(product_variants.id, variantIds));
+        const dbVariants = await db
+            .select({
+                id: product_variants.id,
+                quantity: product_variants.quantity,
+            })
+            .from(product_variants)
+            .where(inArray(product_variants.id, variantIds));
 
-    const variantsMap = new Map(dbVariants.map((v) => [v.id, v]));
+        const variantsMap = new Map(dbVariants.map((v) => [v.id, v]));
 
-    for (const item of items) {
-        const dbVariant = variantsMap.get(item.variant_id);
+        for (const item of items) {
+            const dbVariant = variantsMap.get(item.variant_id);
 
-        if (!dbVariant) {
-            throw new Error(`Product variant with ID ${item.variant_id} does not exist.`);
+            if (!dbVariant) {
+                logger.warn(`verifyStock: variant ${item.variant_id} not found`);
+                throw new Error(`Product variant with ID ${item.variant_id} does not exist.`);
+            }
+
+            if (dbVariant.quantity < item.quantity) {
+                logger.warn(`verifyStock: insufficient stock for variant ${item.variant_id} (requested=${item.quantity}, available=${dbVariant.quantity})`);
+                throw new Error(
+                    `Insufficient stock for variant ID ${item.variant_id}. Requested: ${item.quantity}, Available: ${dbVariant.quantity}`
+                );
+            }
         }
 
-        if (dbVariant.quantity < item.quantity) {
-            throw new Error(
-                `Insufficient stock for variant ID ${item.variant_id}. Requested: ${item.quantity}, Available: ${dbVariant.quantity}`
-            );
+        return true;
+    } catch (error) {
+        if (!error.message?.startsWith('Product variant') && !error.message?.startsWith('Insufficient stock')) {
+            logger.error(`verifyStock unexpected error (itemCount=${items?.length}): ${error.message}`, error);
         }
+        throw error;
     }
-
-    return true;
 };
 
 const getOrdersByUserId = async (userId) => {
@@ -178,7 +192,7 @@ const getOrdersByUserId = async (userId) => {
 
         return userOrders;
     } catch (error) {
-        console.error("Error fetching user orders:", error);
+        logger.error(`Error fetching orders for user ${userId}: ${error.message}`, error);
         throw error;
     }
 };
@@ -193,10 +207,11 @@ const fetchDetails = async (userId, orderId) => {
                 and(
                     eq(orders.id, orderId),
                     eq(orders.user_id, userId)
-                )                
+                )
             );
 
         if (!order) {
+            logger.warn(`fetchDetails: order ${orderId} not found or not owned by user ${userId}`);
             throw new Error("Order not found or access denied.");
         }
 
@@ -220,12 +235,14 @@ const fetchDetails = async (userId, orderId) => {
         };
 
     } catch (error) {
-        logger.error(`FetchDetails Error: ${error.message}`);
+        if (error.message !== "Order not found or access denied.") {
+            logger.error(`fetchDetails error (user=${userId}, orderId=${orderId}): ${error.message}`, error);
+        }
         throw error;
     }
 }
 
-const fetchDetailsWithId=async(orderId)=>{
+const fetchDetailsWithId = async (orderId) => {
     try {
         const [order] = await db
             .select()
@@ -235,6 +252,7 @@ const fetchDetailsWithId=async(orderId)=>{
             );
 
         if (!order) {
+            logger.warn(`fetchDetailsWithId: order ${orderId} not found`);
             throw new Error("Order not found or access denied.");
         }
 
@@ -258,7 +276,9 @@ const fetchDetailsWithId=async(orderId)=>{
         };
 
     } catch (error) {
-        logger.error(`FetchDetails Error: ${error.message}`);
+        if (error.message !== "Order not found or access denied.") {
+            logger.error(`fetchDetailsWithId error (orderId=${orderId}): ${error.message}`, error);
+        }
         throw error;
     }
 }
@@ -301,9 +321,9 @@ const getAllOrdersAdmin = async (page, limit, email, orderId, status) => {
             .offset(offset);
 
         return result;
-        
+
     } catch (error) {
-        logger.error(`Get Orders Error: ${error.message}`);
+        logger.error(`getAllOrdersAdmin error (page=${page}, limit=${limit}, email=${email}, orderId=${orderId}): ${error.message}`, error);
         throw error;
     }
 }
@@ -319,6 +339,7 @@ const fetchDetailsAdmin = async (orderId) => {
             );
 
         if (!order) {
+            logger.warn(`fetchDetailsAdmin: order ${orderId} not found`);
             throw new Error("Order not found or access denied.");
         }
 
@@ -330,7 +351,7 @@ const fetchDetailsAdmin = async (orderId) => {
                 size: product_variants.size,
                 productName: products.name,
                 image: products.image,
-                cod:products.cod
+                cod: products.cod
             })
             .from(orderItems)
             .leftJoin(product_variants, eq(orderItems.variant_id, product_variants.id))
@@ -343,7 +364,9 @@ const fetchDetailsAdmin = async (orderId) => {
         };
 
     } catch (error) {
-        logger.error(`FetchDetails Error: ${error.message}`);
+        if (error.message !== "Order not found or access denied.") {
+            logger.error(`fetchDetailsAdmin error (orderId=${orderId}): ${error.message}`, error);
+        }
         throw error;
     }
 }
@@ -353,6 +376,7 @@ const updateOrderAdmin = async (orderId, status) => {
 
     try {
         if (!allowedStatuses.includes(status)) {
+            logger.warn(`updateOrderAdmin: invalid status="${status}" attempted on order ${orderId}`);
             throw new Error(`Status invalid. Valorile permise sunt: ${allowedStatuses.join(', ')}`);
         }
 
@@ -363,13 +387,16 @@ const updateOrderAdmin = async (orderId, status) => {
             .returning();
 
         if (result.length === 0) {
+            logger.warn(`updateOrderAdmin: order ${orderId} not found`);
             throw new Error(`Comanda cu ID-ul ${orderId} nu a fost găsită.`);
         }
 
         return result[0];
 
     } catch (error) {
-        logger.error(`Update Order Error (ID: ${orderId}): ${error.message}`);
+        if (!error.message?.startsWith('Status invalid') && !error.message?.includes('nu a fost găsită')) {
+            logger.error(`updateOrderAdmin error (orderId=${orderId}, status="${status}"): ${error.message}`, error);
+        }
         throw error;
     }
 }

@@ -78,7 +78,10 @@ export const retrieveAllProducts = async (
         };
 
     } catch (error) {
-        logger.error("Error fetching products:", error);
+        logger.error(
+            `retrieveAllProducts error (page=${page}, limit=${limit}, gender=${gender}, category=${category}, subCategory=${subCategory}, sortBy=${sortBy}, keyword=${keyword}): ${error.message}`,
+            error
+        );
         throw new Error("Could not retrieve products from the database");
     }
 };
@@ -117,7 +120,7 @@ export const retrieveNewArrivals = async (limit=20) => {
       men: menNewest,
     };
   } catch (error) {
-    logger.error("Error fetching new arrivals:", error);
+    logger.error(`retrieveNewArrivals error (limit=${limit}): ${error.message}`, error);
     throw new Error("Could not retrieve new arrivals");
   }
 };
@@ -147,7 +150,7 @@ export const retrieveProductById = async (productId) => {
             variants: variants
         };
     } catch (error) {
-        logger.error(`Error retrieving product with ID ${productId}:`, error);
+        logger.error(`retrieveProductById error (productId=${productId}): ${error.message}`, error);
         throw new Error("Database query failed");
     }
 };
@@ -172,7 +175,7 @@ export const insertProduct = async (productData) => {
 
         return created;
     } catch (error) {
-        logger.error("Error inserting product into DB:", error);
+        logger.error(`insertProduct error (name="${productData?.name}", cod=${productData?.cod}): ${error.message}`, error);
         throw new Error("Could not insert product record");
     }
 };
@@ -193,43 +196,43 @@ export const updateProduct = async (id, data) => {
 
         return updatedProduct;
     } catch (error) {
-        logger.error(`Error updating product ${id}:`, error);
+        logger.error(`updateProduct error (id=${id}, fields=${Object.keys(data || {}).join(',')}): ${error.message}`, error);
         throw new Error("Failed to update product in database");
     }
 };
 
 
-export const insertVariant=async (id,data)=>{
+export const insertVariant = async (id, data) => {
     try {
-        const [variant]=await db.insert(product_variants)
+        const [variant] = await db.insert(product_variants)
             .values({
-                product_id:id,
-                size:data.size,
-                quantity:data.quantity
+                product_id: id,
+                size: data.size,
+                quantity: data.quantity
             })
             .returning()
-        
+
         return variant
     } catch (error) {
-        logger.error("Error creating product variant:", error);
+        logger.error(`insertVariant error (productId=${id}, size=${data?.size}, quantity=${data?.quantity}): ${error.message}`, error);
         throw new Error("Could not create product variant");
     }
 }
 
-export const updateVariant=async (id,data)=>{
+export const updateVariant = async (id, data) => {
     try {
-        const [variant]=await db
+        const [variant] = await db
             .update(product_variants)
-            .set({...data})
-            .where(eq(product_variants.id,id))
+            .set({ ...data })
+            .where(eq(product_variants.id, id))
             .returning()
 
-        if(!variant)
+        if (!variant)
             return null
 
-        return variant  
+        return variant
     } catch (error) {
-        logger.error("error updating the variant",error)
+        logger.error(`updateVariant error (id=${id}, fields=${Object.keys(data || {}).join(',')}): ${error.message}`, error)
         throw new Error("Could not update product variant")
     }
 }

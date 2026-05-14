@@ -9,7 +9,7 @@ export const hashPassword = async password => {
   try {
     return await bcrypt.hash(password, 10);
   } catch (error) {
-    logger.error('error hashing the password', error);
+    logger.error(`hashPassword bcrypt error: ${error.message}`, error);
     throw new Error('error hashing the password');
   }
 };
@@ -29,7 +29,10 @@ export const createUser = async ({
       .where(eq(users.email, email))
       .limit(1);
 
-    if (existingUser.length > 0) throw new Error('user already exists');
+    if (existingUser.length > 0) {
+      logger.warn(`createUser: attempt to register existing email ${email}`);
+      throw new Error('user already exists');
+    }
 
     const passwordHash = await hashPassword(password);
 
@@ -53,10 +56,12 @@ export const createUser = async ({
         created_at: users.created_at,
       });
 
-    logger.info(`user ${newUser.email} created successfully`);
+    logger.info(`User created: ${newUser.email} (id=${newUser.id}, role=${newUser.role})`);
     return newUser;
   } catch (error) {
-    logger.error('error creating the user', error);
+    if (error.message !== 'user already exists') {
+      logger.error(`createUser error for email ${email}: ${error.message}`, error);
+    }
     throw error;
   }
 };
@@ -70,7 +75,7 @@ export const findUserByEmail = async email => {
       .limit(1);
     return user[0];
   } catch (error) {
-    logger.error('error fetching user by email', error);
+    logger.error(`findUserByEmail error (email=${email}): ${error.message}`, error);
     throw error;
   }
 };
@@ -79,7 +84,7 @@ export const verifyPassword = async (plain, hash) => {
   try {
     return await bcrypt.compare(plain, hash);
   } catch (error) {
-    logger.error('error verifying password', error);
+    logger.error(`verifyPassword bcrypt error: ${error.message}`, error);
     throw error;
   }
 };
@@ -102,7 +107,7 @@ export const updateUser = async (id, data) => {
 
     return updated;
   } catch (error) {
-    logger.error('error updating user', error);
+    logger.error(`updateUser error (id=${id}, fields=${Object.keys(data || {}).join(',')}): ${error.message}`, error);
     throw error;
   }
 };
@@ -123,8 +128,10 @@ export const createAdress=async ({
       .where(eq(addresses.user_id,user_id))
       .limit(1)
 
-    if(existingAddress.length>0)
+    if(existingAddress.length>0) {
+      logger.warn(`createAdress: user ${user_id} already has an address`);
       throw new Error("User already registered an address")
+    }
 
     const [newAddress]=await db
       .insert(addresses)
@@ -146,34 +153,36 @@ export const createAdress=async ({
         country:addresses.country,
         created_at:addresses.created_at
       })
-    logger.info(`address ${newAddress.id} created by user ${user_id} successfully`)
+    logger.info(`Address ${newAddress.id} created for user ${user_id}`)
     return newAddress
   } catch (error) {
-    logger.error('error creating the address', error);
+    if (error.message !== 'User already registered an address') {
+      logger.error(`createAdress error (user=${user_id}): ${error.message}`, error);
+    }
     throw error;
   }
-  
+
 }
 
-export const updatAdress=async (userId,data)=>{
+export const updatAdress = async (userId, data) => {
   try {
-    const [updated]=await db
+    const [updated] = await db
       .update(addresses)
       .set(data)
-      .where(eq(addresses.user_id,userId))
+      .where(eq(addresses.user_id, userId))
       .returning({
-        id:addresses.id,
-        user_id:addresses.user_id,
-        address_line:addresses.address_line,
-        city:addresses.city,
-        state:addresses.state,
-        postal_code:addresses.postal_code,
-        country:addresses.country
+        id: addresses.id,
+        user_id: addresses.user_id,
+        address_line: addresses.address_line,
+        city: addresses.city,
+        state: addresses.state,
+        postal_code: addresses.postal_code,
+        country: addresses.country
       })
-    
+
     return updated
   } catch (error) {
-    logger.error('error updating user address',error)
+    logger.error(`updatAdress error (user=${userId}, fields=${Object.keys(data || {}).join(',')}): ${error.message}`, error)
     throw error
   }
 }
